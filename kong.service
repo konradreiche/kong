@@ -1,0 +1,9 @@
+[Unit]
+Description=Kong
+After=network.target
+
+[Service]
+ExecStart=%h/go/bin/kong daemon
+
+[Install]
+WantedBy = multi-user.target
