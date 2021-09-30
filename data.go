@@ -3,7 +3,6 @@ package kong
 import (
 	"bytes"
 	"encoding/gob"
-	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -13,10 +12,6 @@ import (
 )
 
 const expiry = refreshRate * 2
-
-// ErrDataMissing is returned if the data file created by the daemon does not
-// exist.
-var ErrDataMissing = errors.New("data file missing")
 
 // Data contains all Jira data into one type to easily access any relevant
 // information from the CLI but also to serialize and deserialize the data from

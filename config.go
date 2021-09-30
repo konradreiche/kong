@@ -2,7 +2,6 @@ package kong
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
 	"os"
 	"path"
@@ -12,9 +11,6 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// ErrConfigMissing is returned when the configuration file does not exist.
-var ErrConfigMissing = errors.New("configuration missing")
-
 // Config provides the configuration for the Jira client. The configuration is
 // used to authenticate the Jira client and customize Jira queries.
 type Config struct {
@@ -22,11 +18,13 @@ type Config struct {
 	Username string `yaml:"username"`
 	Password string `yaml:"password"`
 
-	Project       string       `yaml:"project"`
-	BoardID       int          `yaml:"boardID"`
-	Labels        []string     `yaml:"labels"`
-	SprintKeyword string       `yaml:"sprintKeyword"`
-	CustomFields  CustomFields `yaml:"customFields"`
+	Project      string       `yaml:"project"`
+	BoardID      int          `yaml:"boardID"`
+	Labels       []string     `yaml:"labels"`
+	CustomFields CustomFields `yaml:"customFields"`
+
+	SprintKeyword  string `yaml:"sprintKeyword"`
+	SprintDuration int    `yaml:"sprintDuration"`
 }
 
 // CustomFields provides configuration of custom fields to map fields like

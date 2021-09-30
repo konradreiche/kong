@@ -13,6 +13,7 @@ kong
 
 - List issues, epics and sprints
 - Create issues in batch
+- Create sprints
 
 ## Installation
 

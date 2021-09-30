@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"os"
+	"strconv"
+	"strings"
 
 	"github.com/konradreiche/kong"
 	"github.com/spf13/cobra"
@@ -92,6 +94,35 @@ var sprintsCmd = &cobra.Command{
 	},
 }
 
+var newSprintCmd = &cobra.Command{
+	Use:                   "new [name] [mm/dd]",
+	Short:                 "Create a new sprint",
+	Args:                  cobra.MinimumNArgs(2),
+	DisableFlagsInUseLine: true,
+	Run: func(cmd *cobra.Command, args []string) {
+		name := args[0]
+		date := strings.Split(args[1], "/")
+		if len(date) != 2 {
+			exitPrompt("Error: requires month and day")
+		}
+
+		month, err := strconv.Atoi(date[0])
+		if err != nil {
+			exitPrompt("Error: month has to be numeric")
+		}
+		day, err := strconv.Atoi(date[1])
+		if err != nil {
+			exitPrompt("Error: day has to be numeric")
+		}
+
+		jira, err := kong.NewJira()
+		if err != nil {
+			exit(err)
+		}
+		must(jira.CreateSprint(name, month, day))
+	},
+}
+
 var configureCmd = &cobra.Command{
 	Use:   "configure",
 	Short: "configure",
@@ -107,10 +138,14 @@ var configureCmd = &cobra.Command{
 		must(r.ReadString("Endpoint", &config.Endpoint))
 		must(r.ReadString("Username", &config.Username))
 		must(r.ReadString("Password", &config.Password))
+
 		must(r.ReadString("Project", &config.Project))
-		must(r.ReadString("Sprint Keyword", &config.SprintKeyword))
 		must(r.ReadInt("Board ID", &config.BoardID))
 		must(r.ReadStringSlice("Epic Labels", &config.Labels))
+
+		must(r.ReadString("Sprint Keyword", &config.SprintKeyword))
+		must(r.ReadInt("Sprint Duration (days)", &config.SprintDuration))
+
 		must(r.ReadString("Epic Field", &config.CustomFields.Epics))
 		must(r.ReadString("Sprint Field", &config.CustomFields.Sprints))
 		must(r.ReadString("Story Points", &config.CustomFields.StoryPoints))
@@ -122,10 +157,12 @@ func Execute() {
 	cmd.AddCommand(configureCmd)
 	cmd.AddCommand(daemonCmd)
 	cmd.AddCommand(epicsCmd)
-	cmd.AddCommand(sprintsCmd)
 
 	cmd.AddCommand(issuesCmd)
 	issuesCmd.AddCommand(newIssuesCmd)
+
+	cmd.AddCommand(sprintsCmd)
+	sprintsCmd.AddCommand(newSprintCmd)
 
 	if err := cmd.Execute(); err != nil {
 		exit(err)
