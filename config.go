@@ -20,7 +20,9 @@ type Config struct {
 
 	Project      string       `yaml:"project"`
 	BoardID      int          `yaml:"boardID"`
+	IssueType    string       `yaml:"issueType"`
 	Labels       []string     `yaml:"labels"`
+	Components   []string     `yaml:"components"`
 	CustomFields CustomFields `yaml:"customFields"`
 
 	SprintKeyword  string `yaml:"sprintKeyword"`
@@ -142,6 +144,9 @@ func (c Configurer) ReadInt(label string, target *int) error {
 // with a given label and writes the user input to target.
 func (c Configurer) ReadStringSlice(label string, target *[]string) error {
 	var s string
+	if target != nil {
+		s = strings.Join(*target, ",")
+	}
 	err := c.ReadString(label, &s)
 	if err != nil {
 		return err

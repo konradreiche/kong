@@ -160,10 +160,19 @@ func (e Editor) parseIssue(columns []string) (*jira.Issue, error) {
 	epic := e.data.Epics[epicIndex-1]
 	sprint := e.data.Sprints[sprintIndex-1]
 
+	// map all custom fields
 	unknowns := tcontainer.NewMarshalMap()
 	unknowns[e.config.CustomFields.Epics] = epic.Key
 	unknowns[e.config.CustomFields.Sprints] = sprint.ID
 	unknowns[e.config.CustomFields.StoryPoints] = storyPoints
+
+	// convert configured components
+	components := make([]*jira.Component, len(e.config.Components))
+	for i, component := range e.config.Components {
+		components[i] = &jira.Component{
+			Name: component,
+		}
+	}
 
 	return &jira.Issue{
 		Fields: &jira.IssueFields{
@@ -173,11 +182,13 @@ func (e Editor) parseIssue(columns []string) (*jira.Issue, error) {
 			Assignee: e.jira.user,
 			Reporter: e.jira.user,
 			Type: jira.IssueType{
-				Name: "Story",
+				Name: e.config.IssueType,
 			},
 			Summary:     summary,
 			Description: description,
 			Unknowns:    unknowns,
+			Components:  components,
+			Labels:      e.config.Labels,
 		},
 	}, nil
 }

@@ -8,6 +8,9 @@ endif
 build:
 	go install cmd/*
 
+lint:
+	golangci-lint run
+
 install:
 	$(SCRIPT)
 

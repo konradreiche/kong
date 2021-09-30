@@ -141,7 +141,9 @@ var configureCmd = &cobra.Command{
 
 		must(r.ReadString("Project", &config.Project))
 		must(r.ReadInt("Board ID", &config.BoardID))
-		must(r.ReadStringSlice("Epic Labels", &config.Labels))
+		must(r.ReadString("Issue Type", &config.IssueType))
+		must(r.ReadStringSlice("Labels", &config.Labels))
+		must(r.ReadStringSlice("Components", &config.Components))
 
 		must(r.ReadString("Sprint Keyword", &config.SprintKeyword))
 		must(r.ReadInt("Sprint Duration (days)", &config.SprintDuration))

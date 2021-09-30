@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"strings"
 	"time"
 
@@ -117,7 +116,10 @@ func (j Jira) CreateIssues(ctx context.Context, issues []*jira.Issue) error {
 	g, _ := errgroup.WithContext(ctx)
 
 	for _, issue := range issues {
-		issue := issue // allocate variable to avoid scope capturing
+		// allocate variable to avoid scope capturing
+		issue := issue
+
+		// create issues concurrency
 		g.Go(func() error {
 			newIssue, resp, err := j.client.Issue.Create(issue)
 			if err != nil {
@@ -127,7 +129,7 @@ func (j Jira) CreateIssues(ctx context.Context, issues []*jira.Issue) error {
 				}
 				return errors.New(string(b))
 			}
-			log.Printf("Created %s - %s\n", newIssue.Key, issue.Fields.Summary)
+			fmt.Printf("Created %s - %s\n", newIssue.Key, issue.Fields.Summary)
 			return nil
 		})
 	}
