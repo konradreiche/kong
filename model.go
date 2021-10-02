@@ -1,6 +1,8 @@
 package kong
 
-import "github.com/andygrunwald/go-jira"
+import (
+	"github.com/andygrunwald/go-jira"
+)
 
 // Issues is a list of issues which conveniently exposes a Print method to
 // display the issue's data.
@@ -13,8 +15,9 @@ type Sprints []Sprint
 // Issue is a Jira issue abstraction. The type primarily exists to only
 // serialize a susbet of the data to disk.
 type Issue struct {
-	Key     string
-	Summary string
+	Key      string
+	Summary  string
+	Priority string
 }
 
 // Sprint is a Jira sprint abstraction.  The type primarily exists to only
@@ -30,8 +33,9 @@ func NewIssues(issues []jira.Issue) Issues {
 	result := make(Issues, len(issues))
 	for i, issue := range issues {
 		result[i] = Issue{
-			Key:     issue.Key,
-			Summary: issue.Fields.Summary,
+			Key:      issue.Key,
+			Summary:  issue.Fields.Summary,
+			Priority: issue.Fields.Priority.Name,
 		}
 	}
 	return result

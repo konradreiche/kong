@@ -21,4 +21,4 @@ status:
 	systemctl --user status kong.service
 
 logs:
-	journalctl --user -u kong.service
+	journalctl --user -u kong.service -f

@@ -200,10 +200,10 @@ func (e Editor) issueTemplate() string {
 	// Epics template
 	fmt.Fprint(w, "# Epics\n")
 	fmt.Fprint(w, "#\n")
-	fmt.Fprint(w, "# ID\t|\tKey\t|\tSummary\n")
-	fmt.Fprint(w, "# --\t|\t---\t|\t-------\n")
+	fmt.Fprint(w, "# ID\t|\tKey\t|\tPriority\t|\tSummary\n")
+	fmt.Fprint(w, "# --\t|\t---\t|\t--------\t|\t-------\n")
 	for i, epic := range e.data.Epics {
-		fmt.Fprintf(w, "# %d\t|\t%s\t|\t%s\n", i+1, epic.Key, epic.Summary)
+		fmt.Fprintf(w, "# %d\t|\t%s\t|\t%s\t|\t%s\n", i+1, epic.Key, epic.Priority, epic.Summary)
 	}
 
 	fmt.Fprint(w, "#\n#\n")
