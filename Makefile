@@ -1,10 +1,3 @@
-SCRIPT = ./scripts/install.sh
-RELOAD = ./scripts/reload.sh
-UNAME = $(shell uname)
-ifeq ($(UNAME), Darwin)
-	SCRIPT = ./scripts/install-darwin.sh
-endif
-
 build:
 	go install cmd/*
 
@@ -12,10 +5,10 @@ lint:
 	golangci-lint run
 
 install:
-	$(SCRIPT)
+	./scripts/install.sh
 
 reload:
-	$(RELOAD)
+	./scripts/reload.sh
 
 status:
 	systemctl --user status kong.service
