@@ -54,11 +54,12 @@ var newIssuesCmd = &cobra.Command{
 	Use:   "new",
 	Short: "Create new issues",
 	Run: func(cmd *cobra.Command, args []string) {
-		editor, err := kong.NewEditor()
+		ctx := cmd.Context()
+		editor, err := kong.NewEditor(ctx)
 		if err != nil {
 			exit(err)
 		}
-		must(editor.OpenIssueEditor(cmd.Context()))
+		must(editor.OpenIssueEditor(ctx))
 	},
 }
 

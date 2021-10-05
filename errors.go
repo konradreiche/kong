@@ -2,6 +2,8 @@ package kong
 
 import (
 	"errors"
+	"fmt"
+	"os"
 )
 
 // ErrConfigMissing is returned when the configuration file does not exist.
@@ -17,4 +19,8 @@ type ErrCreateSprint string
 
 func (e ErrCreateSprint) Error() string {
 	return string(e)
+}
+
+func printDaemonWarning() {
+	fmt.Fprintln(os.Stderr, "Warning: daemon not running. Performing slow request.")
 }

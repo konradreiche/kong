@@ -2,13 +2,14 @@ package kong
 
 import (
 	"bytes"
+	"context"
 	"encoding/gob"
-	"fmt"
 	"log"
 	"os"
 	"time"
 
 	"github.com/gofrs/flock"
+	"golang.org/x/sync/errgroup"
 )
 
 const expiry = refreshRate * 2
@@ -37,13 +38,13 @@ func LoadData() (Data, error) {
 		return data, err
 	}
 
-	path := filepath()
 	if data.isMissing() {
-		fmt.Fprintln(os.Stderr, "Warning: daemon not running. Performing slow request.")
+		printDaemonWarning()
 		return data, nil
 	}
 
 	// read file under file lock
+	path := filepath()
 	flock := flock.New(path)
 	err := flock.Lock()
 	if err != nil {
@@ -63,10 +64,63 @@ func LoadData() (Data, error) {
 	decoder := gob.NewDecoder(bytes.NewBuffer(b))
 	err = decoder.Decode(&data)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "Warning: daemon not running. Performing slow request.")
+		printDaemonWarning()
 		return data, nil
 	}
+
+	// report if data is stale but return current data anyway
+	if data.Stale() {
+		printDaemonWarning()
+	}
 	return data, nil
+}
+
+// LoadDataBlocking will fetch all necessary data by synchronously calling the
+// Jira API.
+//
+// This method should be called when all data is needed to perform operations,
+// for instance to use the editor when the daemon is not running.
+func LoadDataBlocking(ctx context.Context) (Data, error) {
+	var data Data
+	jira, err := NewJira()
+	if err != nil {
+		return data, err
+	}
+
+	// fetch data concurrently but return an error if any of them fails
+	g, _ := errgroup.WithContext(ctx)
+
+	// get issues
+	g.Go(func() error {
+		issues, err := jira.ListIssues()
+		if err != nil {
+			return err
+		}
+		data.Issues = issues
+		return nil
+	})
+
+	// get issues
+	g.Go(func() error {
+		epics, err := jira.ListEpics()
+		if err != nil {
+			return err
+		}
+		data.Epics = epics
+		return nil
+	})
+
+	// get sprints
+	g.Go(func() error {
+		sprints, err := jira.ListSprints()
+		if err != nil {
+			return err
+		}
+		data.Sprints = sprints
+		return nil
+	})
+
+	return data, g.Wait()
 }
 
 // GetIssues returns a list of issues. If the data on disk is out of date it

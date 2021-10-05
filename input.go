@@ -32,20 +32,31 @@ type Editor struct {
 }
 
 // NewEditor returns a new instace of Editor.
-func NewEditor() (Editor, error) {
-	jira, err := NewJira()
+func NewEditor(ctx context.Context) (Editor, error) {
+	var (
+		editor Editor
+		err    error
+	)
+
+	// assign Jira instance
+	editor.jira, err = NewJira()
 	if err != nil {
-		return Editor{}, err
+		return editor, err
 	}
-	data, err := LoadData()
+	editor.config = editor.jira.config
+
+	// load data from file or synchronously by calling Jira API directly
+	editor.data, err = LoadData()
 	if err != nil {
-		return Editor{}, err
+		return editor, err
 	}
-	return Editor{
-		jira:   jira,
-		data:   data,
-		config: jira.config,
-	}, nil
+	if editor.data.Stale() {
+		editor.data, err = LoadDataBlocking(ctx)
+		if err != nil {
+			return editor, err
+		}
+	}
+	return editor, nil
 }
 
 // OpenIssueEditor creates a new file create Jira issues in batches.
