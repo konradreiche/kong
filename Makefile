@@ -10,6 +10,9 @@ install:
 reload:
 	./scripts/reload.sh
 
+stop:
+	./scripts/stop.sh
+
 status:
 	systemctl --user status kong.service
 
