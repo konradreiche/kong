@@ -9,5 +9,7 @@
         <string>/usr/local/bin/kong</string>
         <string>daemon</string>
     </array>
+    <key>RunAtLoad</key>
+    <true/>
 </dict>
 </plist>

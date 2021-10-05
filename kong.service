@@ -6,4 +6,4 @@ After=network.target
 ExecStart=%h/go/bin/kong daemon
 
 [Install]
-WantedBy = multi-user.target
+WantedBy = default.target

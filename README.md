@@ -17,6 +17,12 @@ kong
 
 ## Installation
 
+### Requirements
+
+- Go 1.17+
+- systemctl (Linux)
+- launchctl (macOS)
+
 This will checkout the repository, compile the Go code, create a user service, prompt you to configure Kong for your Jira API and reload the service.
 
 ```
