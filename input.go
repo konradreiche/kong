@@ -103,7 +103,12 @@ func (e Editor) OpenIssueEditor(ctx context.Context) error {
 			return nil
 		}
 
-		issues, err := e.parseIssues(lines)
+		columns, err := e.parseColumns(lines)
+		if err != nil {
+			return err
+		}
+
+		issues, err := e.parseIssues(columns)
 		if err != nil {
 			fmt.Println(err)
 			time.Sleep(2 * time.Second)
@@ -123,14 +128,21 @@ func (e Editor) parseLines(s string) []string {
 	return lines
 }
 
-func (e Editor) parseIssues(lines []string) ([]*jira.Issue, error) {
-	issues := make([]*jira.Issue, 0)
-	for _, line := range lines {
-		columns := strings.Split(line, ",")
-		if len(columns) != 5 {
+func (e Editor) parseColumns(lines []string) ([][]string, error) {
+	columns := make([][]string, len(lines))
+	for i, line := range lines {
+		columns[i] = strings.SplitN(line, ",", 5)
+		if len(columns[i]) != 5 {
 			return nil, errMissingColumn
 		}
-		issue, err := e.parseIssue(columns)
+	}
+	return columns, nil
+}
+
+func (e Editor) parseIssues(columns [][]string) ([]*jira.Issue, error) {
+	issues := make([]*jira.Issue, 0)
+	for _, c := range columns {
+		issue, err := e.parseIssue(c)
 		if err != nil {
 			return nil, err
 		}
