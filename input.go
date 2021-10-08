@@ -180,14 +180,20 @@ func (e Editor) parseIssue(columns []string) (*jira.Issue, error) {
 		return nil, errSprintMismatch
 	}
 
-	epic := e.data.Epics[epicIndex-1]
-	sprint := e.data.Sprints[sprintIndex-1]
-
 	// map all custom fields
 	unknowns := tcontainer.NewMarshalMap()
-	unknowns[e.config.CustomFields.Epics] = epic.Key
-	unknowns[e.config.CustomFields.Sprints] = sprint.ID
 	unknowns[e.config.CustomFields.StoryPoints] = storyPoints
+
+	// setting epic or sprint to 0 means unassigned
+	if epicIndex != 0 {
+		epic := e.data.Epics[epicIndex-1]
+		unknowns[e.config.CustomFields.Epics] = epic.Key
+	}
+
+	if sprintIndex != 0 {
+		sprint := e.data.Sprints[sprintIndex-1]
+		unknowns[e.config.CustomFields.Sprints] = sprint.ID
+	}
 
 	// convert configured components
 	components := make([]*jira.Component, len(e.config.Components))
@@ -220,15 +226,23 @@ func (e Editor) issueTemplate() string {
 	var b bytes.Buffer
 	w := tabwriter.NewWriter(&b, 1, 1, 1, ' ', 0)
 
+	// determine number of dashes for key and summary column
+	keyBorder := strings.Repeat("-", e.maxEpicKeyLength())
+	summaryBorder := strings.Repeat("-", e.maxEpicSummaryLength())
+
 	// Epics template
 	fmt.Fprint(w, "# Epics\n")
 	fmt.Fprint(w, "#\n")
 	fmt.Fprint(w, "# ID\t|\tKey\t|\tPriority\t|\tSummary\n")
-	fmt.Fprint(w, "# --\t|\t---\t|\t--------\t|\t-------\n")
+	fmt.Fprintf(w, "# --\t|\t%s\t|\t--------\t|\t%s\n", keyBorder, summaryBorder)
+	fmt.Fprintf(w, "# %d\t|\t%s\t|\t%s\t|\t%s\n", 0, "", "", "Unassigned")
+	fmt.Fprintf(w, "# --\t|\t%s\t|\t--------\t|\t%s\n", keyBorder, summaryBorder)
+
 	for i, epic := range e.data.Epics {
 		fmt.Fprintf(w, "# %d\t|\t%s\t|\t%s\t|\t%s\n", i+1, epic.Key, epic.Priority, epic.Summary)
 	}
 
+	fmt.Fprintf(w, "# --\t|\t%s\t|\t--------\t|\t%s\n", keyBorder, summaryBorder)
 	fmt.Fprint(w, "#\n#\n")
 
 	// Sprints template
@@ -236,6 +250,7 @@ func (e Editor) issueTemplate() string {
 	fmt.Fprint(w, "#\n")
 	fmt.Fprint(w, "# ID\t|\tName\n")
 	fmt.Fprint(w, "# --\t|\t----\n")
+	fmt.Fprint(w, "# 0\t|\tUnassigned\n")
 	for i, sprint := range e.data.Sprints {
 		fmt.Fprintf(w, "# %d\t|\t%s\n", i+1, sprint.Name)
 	}
@@ -250,4 +265,24 @@ func (e Editor) issueTemplate() string {
 
 	w.Flush()
 	return b.String()
+}
+
+func (e Editor) maxEpicKeyLength() int {
+	var max int
+	for _, epic := range e.data.Epics {
+		if len(epic.Key) > max {
+			max = len(epic.Key)
+		}
+	}
+	return max
+}
+
+func (e Editor) maxEpicSummaryLength() int {
+	var max int
+	for _, epic := range e.data.Epics {
+		if len(epic.Summary) > max {
+			max = len(epic.Summary)
+		}
+	}
+	return max
 }
