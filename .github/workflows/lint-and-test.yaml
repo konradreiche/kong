@@ -1,4 +1,4 @@
-name: test-and-lint
+name: Lint & Test
 
 on:
   push:
@@ -9,17 +9,20 @@ on:
   pull_request:
 
 jobs:
-  runs-on: ubuntu-latest
-  container:
-    image: golang:1.17.1
+  golangci-lint:
+    runs-on: ubuntu-latest
+    container:
+      image: golang:1.17.1
 
-  golangci:
-    name: lint
     steps:
       - uses: actions/checkout@v2
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v2
   test:
-    name: test
+    runs-on: ubuntu-latest
+    container:
+      image: golang:1.17.1
+
     steps:
+      - uses: actions/checkout@v2
       - run: go test ./... -race
