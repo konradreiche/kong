@@ -23,8 +23,9 @@ type Issue struct {
 // Sprint is a Jira sprint abstraction.  The type primarily exists to only
 // serialize a susbet of the data to disk.
 type Sprint struct {
-	ID   int
-	Name string
+	ID    int
+	Name  string
+	State string
 }
 
 // NewIssues returns a new instance of Issues by converting jira.Issue to
@@ -47,9 +48,21 @@ func NewSprints(sprints []jira.Sprint) Sprints {
 	result := make(Sprints, len(sprints))
 	for i, sprint := range sprints {
 		result[i] = Sprint{
-			ID:   sprint.ID,
-			Name: sprint.Name,
+			ID:    sprint.ID,
+			Name:  sprint.Name,
+			State: sprint.State,
 		}
 	}
 	return result
+}
+
+// ActiveSprint returns the currently active sprint or an error if there is no
+// active sprint.
+func (s Sprints) ActiveSprint() (Sprint, error) {
+	for _, sprint := range s {
+		if sprint.State == "active" {
+			return sprint, nil
+		}
+	}
+	return Sprint{}, ErrNoActiveSprint
 }

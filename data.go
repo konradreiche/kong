@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/gob"
+	"fmt"
 	"log"
 	"os"
 	"time"
@@ -18,10 +19,12 @@ const expiry = refreshRate * 2
 // information from the CLI but also to serialize and deserialize the data from
 // disk.
 type Data struct {
-	Timestamp int64
-	Issues    Issues
-	Epics     Issues
-	Sprints   Sprints
+	Timestamp    int64
+	Issues       Issues
+	Epics        Issues
+	SprintIssues Issues
+	Sprints      Sprints
+	ActiveSprint Sprint
 }
 
 // Stale indicates if the data read from disk is out of date.
@@ -110,6 +113,16 @@ func LoadDataBlocking(ctx context.Context) (Data, error) {
 		return nil
 	})
 
+	// get active sprint issues
+	g.Go(func() error {
+		issues, err := jira.ListSprintIssues()
+		if err != nil {
+			return err
+		}
+		data.SprintIssues = issues
+		return nil
+	})
+
 	// get sprints
 	g.Go(func() error {
 		sprints, err := jira.ListSprints()
@@ -117,6 +130,11 @@ func LoadDataBlocking(ctx context.Context) (Data, error) {
 			return err
 		}
 		data.Sprints = sprints
+		activeSprint, err := sprints.ActiveSprint()
+		if err != nil {
+			fmt.Fprint(os.Stderr, err)
+		}
+		data.ActiveSprint = activeSprint
 		return nil
 	})
 
@@ -134,6 +152,19 @@ func (d Data) GetIssues() (Issues, error) {
 		return jira.ListIssues()
 	}
 	return d.Issues, nil
+}
+
+// GetSprintIssues return a list of issues in the current sprint. If the data
+// on disk is out of date it will request the latest issues from Jira.
+func (d Data) GetSprintIssues() (Issues, error) {
+	if d.Stale() {
+		jira, err := NewJira()
+		if err != nil {
+			return nil, err
+		}
+		return jira.ListSprintIssues()
+	}
+	return d.SprintIssues, nil
 }
 
 // GetEpics returns a list of epic issues. If the data on disk is out of date

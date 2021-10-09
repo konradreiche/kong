@@ -13,6 +13,10 @@ var ErrConfigMissing = errors.New("configuration missing")
 // exist.
 var ErrDataMissing = errors.New("data file missing")
 
+// ErrNoActiveSprint is returned when there is no active sprint in a list of
+// sprints.
+var ErrNoActiveSprint = errors.New("no active sprint")
+
 // ErrCreateSprint is used to wrap the Jira API response returned on sprint
 // creation failure.
 type ErrCreateSprint string

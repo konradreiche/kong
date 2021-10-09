@@ -36,7 +36,7 @@ var daemonCmd = &cobra.Command{
 
 var issuesCmd = &cobra.Command{
 	Use:   "issues",
-	Short: "List issues",
+	Short: "List and create issues",
 	Run: func(cmd *cobra.Command, args []string) {
 		data, err := kong.LoadData()
 		if err != nil {
@@ -63,6 +63,22 @@ var newIssuesCmd = &cobra.Command{
 	},
 }
 
+var sprintIssuesCmd = &cobra.Command{
+	Use:   "sprint",
+	Short: "List issues in current sprint",
+	Run: func(cmd *cobra.Command, args []string) {
+		data, err := kong.LoadData()
+		if err != nil {
+			exit(err)
+		}
+		issues, err := data.GetSprintIssues()
+		if err != nil {
+			exit(err)
+		}
+		issues.Print()
+	},
+}
+
 var epicsCmd = &cobra.Command{
 	Use:   "epics",
 	Short: "List epics",
@@ -81,7 +97,7 @@ var epicsCmd = &cobra.Command{
 
 var sprintsCmd = &cobra.Command{
 	Use:   "sprints",
-	Short: "List sprints",
+	Short: "List and create sprints",
 	Run: func(cmd *cobra.Command, args []string) {
 		data, err := kong.LoadData()
 		if err != nil {
@@ -163,6 +179,7 @@ func Execute() {
 
 	cmd.AddCommand(issuesCmd)
 	issuesCmd.AddCommand(newIssuesCmd)
+	issuesCmd.AddCommand(sprintIssuesCmd)
 
 	cmd.AddCommand(sprintsCmd)
 	sprintsCmd.AddCommand(newSprintCmd)

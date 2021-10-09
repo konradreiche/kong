@@ -46,6 +46,7 @@ func (d *Daemon) loop() error {
 		d.loadIssues,
 		d.loadSprints,
 		d.loadEpics,
+		d.loadSprintIssues,
 	}
 	for _, f := range loaders {
 		d.wg.Add(1)
@@ -105,6 +106,16 @@ func (d *Daemon) loadEpics() {
 	d.data.Epics = epics
 }
 
+func (d *Daemon) loadSprintIssues() {
+	defer d.wg.Done()
+	issues, err := d.jira.ListSprintIssues()
+	if err != nil {
+		log.Print(err)
+		return
+	}
+	d.data.SprintIssues = issues
+}
+
 func (d *Daemon) loadSprints() {
 	defer d.wg.Done()
 	sprints, err := d.jira.ListSprints()
@@ -113,6 +124,11 @@ func (d *Daemon) loadSprints() {
 		return
 	}
 	d.data.Sprints = sprints
+	activeSprint, err := sprints.ActiveSprint()
+	if err != nil {
+		log.Print(err)
+	}
+	d.data.ActiveSprint = activeSprint
 }
 
 func filepath() string {

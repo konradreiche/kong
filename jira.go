@@ -65,6 +65,25 @@ func (j Jira) ListIssues() (Issues, error) {
 	return NewIssues(list), nil
 }
 
+// ListSprintIssues fetches all issues assigned to the current sprint.
+func (j Jira) ListSprintIssues() (Issues, error) {
+	conditions := []string{
+		"project = " + j.config.Project,
+		"issueType IN (Story, Bug)",
+		"assignee = \"" + j.user.DisplayName + "\"",
+		"status != Closed",
+		"sprint in openSprints()",
+	}
+	jql := strings.Join(conditions, " AND ")
+	list, _, err := j.client.Issue.Search(jql, &jira.SearchOptions{
+		Expand: "transitions",
+	})
+	if err != nil {
+		return nil, err
+	}
+	return NewIssues(list), nil
+}
+
 // ListEpics returns a list of epics associated wtih the current project.
 func (j Jira) ListEpics() (Issues, error) {
 	conditions := []string{
