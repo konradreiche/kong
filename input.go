@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"os/exec"
 	"strconv"
@@ -77,7 +76,7 @@ func (e Editor) OpenIssueEditor(ctx context.Context) error {
 	defer func() {
 		err := os.Remove(f.Name())
 		if err != nil {
-			log.Print(err)
+			fmt.Fprint(os.Stderr, err)
 		}
 	}()
 

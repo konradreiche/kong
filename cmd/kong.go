@@ -26,11 +26,11 @@ var daemonCmd = &cobra.Command{
 	Use:   "daemon",
 	Short: "Run background process",
 	Run: func(cmd *cobra.Command, args []string) {
-		jira, err := kong.NewJira()
+		d, err := kong.NewDaemon()
 		if err != nil {
 			exit(err)
 		}
-		kong.NewDaemon(jira).Run()
+		d.Run(cmd.Context())
 	},
 }
 
@@ -172,6 +172,8 @@ var configureCmd = &cobra.Command{
 	},
 }
 
+// Execute assembles the all commands and sub-commands and executes the
+// program.
 func Execute() {
 	cmd.AddCommand(configureCmd)
 	cmd.AddCommand(daemonCmd)
