@@ -1,8 +1,9 @@
 build:
 	go install cmd/*
 
-lint:
+test:
 	golangci-lint run
+	go test ./...
 
 install:
 	./scripts/install.sh

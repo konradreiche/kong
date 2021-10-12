@@ -170,7 +170,7 @@ func (e Editor) parseIssue(columns []string) (*jira.Issue, error) {
 	description := columns[4]
 
 	// verify epic index matches available epics
-	if epicIndex < 0 || epicIndex >= len(e.data.Epics) {
+	if epicIndex < 0 || epicIndex > len(e.data.Epics) {
 		return nil, errEpicMismatch
 	}
 
