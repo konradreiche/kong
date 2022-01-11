@@ -51,7 +51,7 @@ func NewJira() (Jira, error) {
 func (j Jira) ListIssues() (Issues, error) {
 	conditions := []string{
 		"project = " + j.config.Project,
-		"issueType IN (Story, Bug)",
+		"issueType IN (Task, Story, Bug)",
 		"assignee = \"" + j.user.DisplayName + "\"",
 		"status != Closed",
 	}
