@@ -1,5 +1,5 @@
 build:
-	go install cmd/*
+	go install cmd/kong.go && rm -f cmd/cmd
 
 test:
 	golangci-lint run

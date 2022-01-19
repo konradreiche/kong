@@ -79,6 +79,33 @@ var sprintIssuesCmd = &cobra.Command{
 	},
 }
 
+var cloneCmd = &cobra.Command{
+	Use:                   "clone [project] [sprint] [story point factor]",
+	Short:                 "Clone issues from current project into another",
+	Args:                  cobra.MinimumNArgs(3),
+	DisableFlagsInUseLine: true,
+	Run: func(cmd *cobra.Command, args []string) {
+		ctx := cmd.Context()
+
+		// parse arguments
+		project := args[0]
+		sprint, err := strconv.ParseInt(args[1], 10, 64)
+		if err != nil {
+			exit(err)
+		}
+		spFactor, err := strconv.ParseFloat(args[2], 64)
+		if err != nil {
+			exit(err)
+		}
+
+		editor, err := kong.NewEditor(ctx)
+		if err != nil {
+			exit(err)
+		}
+		must(editor.OpenCloneEditor(ctx, project, int(sprint), spFactor))
+	},
+}
+
 var epicsCmd = &cobra.Command{
 	Use:   "epics",
 	Short: "List epics",
@@ -95,10 +122,30 @@ var epicsCmd = &cobra.Command{
 	},
 }
 
+var project string
+
 var sprintsCmd = &cobra.Command{
 	Use:   "sprints",
 	Short: "List and create sprints",
 	Run: func(cmd *cobra.Command, args []string) {
+		// request sprints if an alternative project is provided
+		if project != "" {
+			jira, err := kong.NewJira()
+			if err != nil {
+				exit(err)
+			}
+			boardID, err := jira.GetBoardID(project)
+			if err != nil {
+				exit(err)
+			}
+			sprints, err := jira.ListSprintsForBoard(boardID)
+			if err != nil {
+				exit(err)
+			}
+			sprints.Print()
+			return
+		}
+
 		data, err := kong.LoadData()
 		if err != nil {
 			exit(err)
@@ -178,6 +225,7 @@ func Execute() {
 	cmd.AddCommand(configureCmd)
 	cmd.AddCommand(daemonCmd)
 	cmd.AddCommand(epicsCmd)
+	cmd.AddCommand(cloneCmd)
 
 	cmd.AddCommand(issuesCmd)
 	issuesCmd.AddCommand(newIssuesCmd)
@@ -185,6 +233,9 @@ func Execute() {
 
 	cmd.AddCommand(sprintsCmd)
 	sprintsCmd.AddCommand(newSprintCmd)
+
+	// configure flags
+	sprintsCmd.Flags().StringVarP(&project, "project", "p", "", "Reference alternative project")
 
 	if err := cmd.Execute(); err != nil {
 		exit(err)

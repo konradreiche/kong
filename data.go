@@ -21,10 +21,18 @@ type Data struct {
 
 	Timestamp    int64
 	Issues       Issues
+	IssueByKey   map[string]Issue
 	Epics        Issues
 	SprintIssues Issues
 	Sprints      Sprints
 	ActiveSprint Sprint
+}
+
+// NewData returns a new instance of Data.
+func NewData() Data {
+	return Data{
+		IssueByKey: make(map[string]Issue),
+	}
 }
 
 // Stale indicates if the data read from disk is out of date.
@@ -35,7 +43,10 @@ func (d Data) Stale() bool {
 
 // LoadData parses the Jira state from disk or returns an error if it is out of
 // date.
-func LoadData() (data Data, err error) {
+func LoadData() (Data, error) {
+	var err error
+	data := NewData()
+
 	if data.isMissing() {
 		printDaemonWarning()
 		return data, nil
@@ -115,6 +126,9 @@ func (d *Data) loadIssues() error {
 	issues, err := d.jira.ListIssues()
 	if err != nil {
 		return err
+	}
+	for _, issue := range issues {
+		d.IssueByKey[issue.Key] = issue
 	}
 	d.Issues = issues
 	return nil

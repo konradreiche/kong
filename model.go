@@ -47,13 +47,19 @@ func NewIssues(issues []jira.Issue) Issues {
 func NewSprints(sprints []jira.Sprint) Sprints {
 	result := make(Sprints, len(sprints))
 	for i, sprint := range sprints {
-		result[i] = Sprint{
-			ID:    sprint.ID,
-			Name:  sprint.Name,
-			State: sprint.State,
-		}
+		result[i] = NewSprint(sprint)
 	}
 	return result
+}
+
+// NewSprint returns a new instance of Sprint by converting jira.Sprint to
+// Sprint.
+func NewSprint(sprint jira.Sprint) Sprint {
+	return Sprint{
+		ID:    sprint.ID,
+		Name:  sprint.Name,
+		State: sprint.State,
+	}
 }
 
 // ActiveSprint returns the currently active sprint or an error if there is no

@@ -14,6 +14,7 @@ kong
 - List issues, epics and sprints
 - Create issues in batch
 - Create sprints
+- Clone issues across projects
 
 ## Installation
 

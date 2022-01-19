@@ -2,14 +2,17 @@ package kong
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math"
 	"strings"
 	"time"
 
 	"github.com/andygrunwald/go-jira"
+	"github.com/trivago/tgo/tcontainer"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -130,6 +133,53 @@ func (j Jira) ListSprints() (Sprints, error) {
 	return NewSprints(filtered), nil
 }
 
+// GetBoardID returns the board ID for a given project.
+func (j Jira) GetBoardID(project string) (int, error) {
+	req, err := j.client.NewRequest("GET", "/rest/agile/1.0/board?projectKeyOrId="+project, nil)
+	if err != nil {
+		return 0, err
+	}
+
+	resp, err := j.client.Do(req, nil)
+	if err != nil {
+		b, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return 0, err
+		}
+		return 0, errors.New(string(b))
+	}
+	b, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return 0, err
+	}
+
+	var result struct {
+		Values []struct {
+			ID int `json:"id"`
+		} `json:"values"`
+	}
+
+	if err := json.Unmarshal(b, &result); err != nil {
+		return 0, err
+	}
+
+	return result.Values[0].ID, nil
+}
+
+// ListSprintsForBoard returns a list of sprints for the given board ID.
+func (j Jira) ListSprintsForBoard(boardID int) (Sprints, error) {
+	sprints, _, err := j.client.Board.GetAllSprintsWithOptions(
+		boardID,
+		&jira.GetAllSprintsOptions{
+			State: "active,future",
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+	return NewSprints(sprints.Values), nil
+}
+
 // CreateIssues creates the given issues in parallel.
 func (j Jira) CreateIssues(ctx context.Context, issues []*jira.Issue) error {
 	g, _ := errgroup.WithContext(ctx)
@@ -196,4 +246,49 @@ func (j Jira) CreateSprint(name string, month, day int) error {
 	}
 
 	return nil
+}
+
+// CloneIssues clones a list of issues identified by their keys to a new project.
+func (j Jira) CloneIssues(ctx context.Context, keys []string, project string, sprint int, spFactor float64) error {
+	conditions := []string{
+		"project = " + j.config.Project,
+		"key IN (" + strings.Join(keys, ", ") + ")",
+	}
+	jql := strings.Join(conditions, " AND ")
+	list, _, err := j.client.Issue.Search(jql, &jira.SearchOptions{})
+	if err != nil {
+		return err
+	}
+
+	issues := make([]*jira.Issue, len(list))
+	for i, issue := range list {
+		unknowns := tcontainer.NewMarshalMap()
+		unknowns[j.config.CustomFields.Sprints] = sprint
+
+		// adjust story points
+		storyPoints, ok := issue.Fields.Unknowns[j.config.CustomFields.StoryPoints].(float64)
+		if !ok {
+			return fmt.Errorf(
+				"unexpected type for story points field: %T",
+				issue.Fields.Unknowns[j.config.CustomFields.StoryPoints])
+		}
+		unknowns[j.config.CustomFields.StoryPoints] = math.Ceil(storyPoints * spFactor)
+
+		issues[i] = &jira.Issue{
+			Fields: &jira.IssueFields{
+				// set project to clone target
+				Project: jira.Project{
+					Key: project,
+				},
+				Assignee:    issue.Fields.Assignee,
+				Reporter:    issue.Fields.Reporter,
+				Type:        issue.Fields.Type,
+				Summary:     issue.Fields.Summary,
+				Description: issue.Fields.Description,
+				Unknowns:    unknowns,
+			},
+		}
+	}
+
+	return j.CreateIssues(ctx, issues)
 }

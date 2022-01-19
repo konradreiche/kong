@@ -19,7 +19,7 @@ func (i Issues) Print() {
 func (s Sprints) Print() {
 	w := tabwriter.NewWriter(os.Stdout, 1, 1, 1, ' ', 0)
 	for _, sprint := range s {
-		fmt.Fprintf(w, "%s\n", sprint.Name)
+		fmt.Fprintf(w, "%d\t-\t%s\n", sprint.ID, sprint.Name)
 	}
 	w.Flush()
 }
