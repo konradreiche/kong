@@ -106,10 +106,25 @@ var cloneCmd = &cobra.Command{
 	},
 }
 
+var project string
+
 var epicsCmd = &cobra.Command{
 	Use:   "epics",
 	Short: "List epics",
 	Run: func(cmd *cobra.Command, args []string) {
+		if project != "" {
+			jira, err := kong.NewJira()
+			if err != nil {
+				exit(err)
+			}
+			epics, err := jira.ListEpics(project)
+			if err != nil {
+				exit(err)
+			}
+			epics.Print()
+			return
+		}
+
 		data, err := kong.LoadData()
 		if err != nil {
 			exit(err)
@@ -121,8 +136,6 @@ var epicsCmd = &cobra.Command{
 		epics.Print()
 	},
 }
-
-var project string
 
 var sprintsCmd = &cobra.Command{
 	Use:   "sprints",
@@ -235,7 +248,12 @@ func Execute() {
 	sprintsCmd.AddCommand(newSprintCmd)
 
 	// configure flags
-	sprintsCmd.Flags().StringVarP(&project, "project", "p", "", "Reference alternative project")
+	for _, cmd := range []*cobra.Command{
+		epicsCmd,
+		sprintsCmd,
+	} {
+		cmd.Flags().StringVarP(&project, "project", "p", "", "Reference alternative project")
+	}
 
 	if err := cmd.Execute(); err != nil {
 		exit(err)

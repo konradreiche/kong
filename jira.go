@@ -88,9 +88,9 @@ func (j Jira) ListSprintIssues() (Issues, error) {
 }
 
 // ListEpics returns a list of epics associated wtih the current project.
-func (j Jira) ListEpics() (Issues, error) {
+func (j Jira) ListEpics(project string) (Issues, error) {
 	conditions := []string{
-		"project = " + j.config.Project,
+		"project = " + project,
 		"issueType = Epic",
 		"status != Closed",
 	}

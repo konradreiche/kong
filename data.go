@@ -135,7 +135,7 @@ func (d *Data) loadIssues() error {
 }
 
 func (d *Data) loadEpics() error {
-	epics, err := d.jira.ListEpics()
+	epics, err := d.jira.ListEpics(d.jira.config.Project)
 	if err != nil {
 		return err
 	}
