@@ -123,7 +123,7 @@ func (d *Data) load(ctx context.Context) error {
 }
 
 func (d *Data) loadIssues() error {
-	issues, err := d.jira.ListIssues()
+	issues, err := d.jira.ListIssues(d.jira.config.Project)
 	if err != nil {
 		return err
 	}

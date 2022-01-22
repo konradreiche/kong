@@ -51,9 +51,9 @@ func NewJira() (Jira, error) {
 }
 
 // ListIssues fetches all issues according to a specific JQL query.
-func (j Jira) ListIssues() (Issues, error) {
+func (j Jira) ListIssues(project string) (Issues, error) {
 	conditions := []string{
-		"project = " + j.config.Project,
+		"project = " + project,
 		"issueType IN (Task, Story, Bug)",
 		"assignee = \"" + j.user.DisplayName + "\"",
 		"status != Closed",

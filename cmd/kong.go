@@ -10,6 +10,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var projectFlag string
+
 func main() {
 	Execute()
 }
@@ -38,6 +40,18 @@ var issuesCmd = &cobra.Command{
 	Use:   "issues",
 	Short: "List and create issues",
 	Run: func(cmd *cobra.Command, args []string) {
+		if projectFlag != "" {
+			jira, err := kong.NewJira()
+			if err != nil {
+				exit(err)
+			}
+			issues, err := jira.ListIssues(projectFlag)
+			if err != nil {
+				exit(err)
+			}
+			issues.Print()
+			return
+		}
 		data, err := kong.LoadData()
 		if err != nil {
 			exit(err)
@@ -106,18 +120,16 @@ var cloneCmd = &cobra.Command{
 	},
 }
 
-var project string
-
 var epicsCmd = &cobra.Command{
 	Use:   "epics",
 	Short: "List epics",
 	Run: func(cmd *cobra.Command, args []string) {
-		if project != "" {
+		if projectFlag != "" {
 			jira, err := kong.NewJira()
 			if err != nil {
 				exit(err)
 			}
-			epics, err := jira.ListEpics(project)
+			epics, err := jira.ListEpics(projectFlag)
 			if err != nil {
 				exit(err)
 			}
@@ -142,12 +154,12 @@ var sprintsCmd = &cobra.Command{
 	Short: "List and create sprints",
 	Run: func(cmd *cobra.Command, args []string) {
 		// request sprints if an alternative project is provided
-		if project != "" {
+		if projectFlag != "" {
 			jira, err := kong.NewJira()
 			if err != nil {
 				exit(err)
 			}
-			boardID, err := jira.GetBoardID(project)
+			boardID, err := jira.GetBoardID(projectFlag)
 			if err != nil {
 				exit(err)
 			}
@@ -249,10 +261,11 @@ func Execute() {
 
 	// configure flags
 	for _, cmd := range []*cobra.Command{
+		issuesCmd,
 		epicsCmd,
 		sprintsCmd,
 	} {
-		cmd.Flags().StringVarP(&project, "project", "p", "", "Reference alternative project")
+		cmd.Flags().StringVarP(&projectFlag, "project", "p", "", "Reference alternative project")
 	}
 
 	if err := cmd.Execute(); err != nil {
