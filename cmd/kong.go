@@ -112,11 +112,25 @@ var cloneCmd = &cobra.Command{
 			exit(err)
 		}
 
+		jira, err := kong.NewJira()
+		if err != nil {
+			exit(err)
+		}
+		issues, err := jira.ListIssues(project)
+		if err != nil {
+			exit(err)
+		}
+
 		editor, err := kong.NewEditor(ctx)
 		if err != nil {
 			exit(err)
 		}
-		must(editor.OpenCloneEditor(ctx, project, int(sprint), spFactor))
+		must(editor.OpenCloneEditor(ctx, kong.CloneEditorArgs{
+			Project:  project,
+			Sprint:   int(sprint),
+			SPFactor: spFactor,
+			Issues:   issues,
+		}))
 	},
 }
 

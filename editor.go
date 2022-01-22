@@ -120,9 +120,17 @@ func (e Editor) OpenIssueEditor(ctx context.Context) error {
 	}
 }
 
+// CloneEditorArgs defines the arguments being passed to OpenCloneEditor.
+type CloneEditorArgs struct {
+	Project  string
+	Sprint   int
+	SPFactor float64
+	Issues   Issues
+}
+
 // OpenCloneEditor creates a new file create Jira issues in batches.
-func (e Editor) OpenCloneEditor(ctx context.Context, project string, sprint int, spFactor float64) error {
-	filename, cleanup, err := e.createFile(e.cloneTemplate(project, sprint, spFactor), "kong-clone")
+func (e Editor) OpenCloneEditor(ctx context.Context, args CloneEditorArgs) error {
+	filename, cleanup, err := e.createFile(e.cloneTemplate(args), "kong-clone")
 	if err != nil {
 		return err
 	}
@@ -162,7 +170,7 @@ func (e Editor) OpenCloneEditor(ctx context.Context, project string, sprint int,
 			return nil
 		}
 
-		return e.jira.CloneIssues(ctx, keys, project, sprint, spFactor)
+		return e.jira.CloneIssues(ctx, keys, args.Project, args.Sprint, args.SPFactor)
 	}
 }
 
@@ -340,12 +348,23 @@ func (e Editor) issueTemplate() string {
 	return b.String()
 }
 
-func (e Editor) cloneTemplate(project string, sprint int, spFactor float64) string {
+func (e Editor) cloneTemplate(args CloneEditorArgs) string {
 	var b bytes.Buffer
 	w := tabwriter.NewWriter(&b, 1, 1, 1, ' ', 0)
 
+	// use target project's issues to filter out already cloned issues
+	existingIssues := make(map[string]Issue, len(args.Issues))
+	for _, issue := range args.Issues {
+		existingIssues[issue.Summary] = issue
+	}
+	clonedIssues := make(Issues, 0)
+
 	// List actions and issues
 	for _, issue := range e.data.Issues {
+		if _, ok := existingIssues[issue.Summary]; ok {
+			clonedIssues = append(clonedIssues, issue)
+			continue
+		}
 		fmt.Fprintf(w, "%s\t%s\t%s\n", "keep", issue.Key, issue.Summary)
 	}
 
@@ -355,16 +374,23 @@ func (e Editor) cloneTemplate(project string, sprint int, spFactor float64) stri
 		w,
 		"# Cloning issues from project %s to %s, assigning them to sprint %d\n",
 		e.config.Project,
-		project,
-		sprint,
+		args.Project,
+		args.Sprint,
 	)
 
-	fmt.Fprintf(w, "# and multiplying the story points by %v\n", spFactor)
-	fmt.Fprint(w, "\n")
+	fmt.Fprintf(w, "# and multiplying the story points by %v\n", args.SPFactor)
+	fmt.Fprint(w, "#\n")
 	fmt.Fprint(w, "# Commands:\n")
 	fmt.Fprint(w, "#\n")
 	fmt.Fprint(w, "# c, clone <key> = clone issue to new project\n")
 	fmt.Fprint(w, "# k, keep <key> = keep as is, do nothing\n")
+	fmt.Fprint(w, "#\n")
+	fmt.Fprint(w, "# Cloned:\n")
+	fmt.Fprint(w, "#\n")
+
+	for _, issue := range clonedIssues {
+		fmt.Fprintf(w, "# %s\t-\t%s\n", issue.Key, issue.Summary)
+	}
 
 	w.Flush()
 	return b.String()
