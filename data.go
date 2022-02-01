@@ -26,6 +26,7 @@ type Data struct {
 	SprintIssues Issues
 	Sprints      Sprints
 	ActiveSprint Sprint
+	Transitions  []Transition
 }
 
 // NewData returns a new instance of Data.

@@ -17,9 +17,11 @@ import (
 )
 
 var (
-	errMissingColumn  = errors.New("missing column")
-	errEpicMismatch   = errors.New("epic does not exist")
-	errSprintMismatch = errors.New("sprint does not exist")
+	errMissingColumn     = errors.New("missing column")
+	errEpicMismatch      = errors.New("epic does not exist")
+	errSprintMismatch    = errors.New("sprint does not exist")
+	errUnknownIssue      = errors.New("issues does not exist")
+	errUnknownTransition = errors.New("transition does not exist")
 )
 
 // Editor provides any functionality that processes user input by providing a
@@ -152,7 +154,7 @@ func (e Editor) OpenCloneEditor(ctx context.Context, args CloneEditorArgs) error
 			return nil
 		}
 
-		columns, err := e.parseCloneColumns(lines)
+		columns, err := e.parseActionColumns(lines)
 		if err != nil {
 			return err
 		}
@@ -171,6 +173,66 @@ func (e Editor) OpenCloneEditor(ctx context.Context, args CloneEditorArgs) error
 		}
 
 		return e.jira.CloneIssues(ctx, keys, args.Project, args.Sprint, args.SPFactor)
+	}
+}
+
+// OpenSprintEditor creates a new file to edit the sprint board issue progress.
+func (e Editor) OpenSprintEditor(ctx context.Context) error {
+	filename, cleanup, err := e.createFile(e.sprintTemplate(), "kong-sprint")
+	if err != nil {
+		return err
+	}
+	defer cleanup()
+
+	for {
+		if err := e.open(ctx, filename, false); err != nil {
+			return err
+		}
+		b, err := os.ReadFile(filename)
+		if err != nil {
+			return err
+		}
+
+		lines := e.parseLines(string(b))
+
+		// abort on empty input
+		if len(lines) == 0 {
+			return nil
+		}
+
+		columns, err := e.parseActionColumns(lines)
+		if err != nil {
+			return err
+		}
+
+		var updateIssues []issueTransition
+		for _, row := range columns {
+			action := row[0]
+			key := row[1]
+
+			issue, ok := e.data.IssueByKey[key]
+			if !ok {
+				return errUnknownIssue
+			}
+
+			// skip issues without transition to apply
+			if action == issue.Status.Acronym {
+				continue
+			}
+
+			// look up transition based on action specified as acronym
+			transition, ok := issue.TransitionsByAcronym[action]
+			if !ok {
+				return errUnknownTransition
+			}
+
+			// construct tuple to perform issue transitions
+			updateIssues = append(updateIssues, issueTransition{
+				issueKey:   key,
+				transition: transition,
+			})
+		}
+		return e.jira.TransitionIssues(ctx, updateIssues)
 	}
 }
 
@@ -209,11 +271,11 @@ func (e Editor) parseColumns(lines []string) ([][]string, error) {
 	return columns, nil
 }
 
-func (e Editor) parseCloneColumns(lines []string) ([][]string, error) {
+func (e Editor) parseActionColumns(lines []string) ([][]string, error) {
 	columns := make([][]string, len(lines))
 	for i, line := range lines {
-		columns[i] = strings.SplitN(line, " ", 3)
-		if len(columns[i]) != 3 {
+		columns[i] = strings.Fields(line)
+		if len(columns[i]) < 3 {
 			return nil, errMissingColumn
 		}
 	}
@@ -390,6 +452,29 @@ func (e Editor) cloneTemplate(args CloneEditorArgs) string {
 
 	for _, issue := range clonedIssues {
 		fmt.Fprintf(w, "# %s\t-\t%s\n", issue.Key, issue.Summary)
+	}
+
+	w.Flush()
+	return b.String()
+}
+
+func (e Editor) sprintTemplate() string {
+	var b bytes.Buffer
+	w := tabwriter.NewWriter(&b, 1, 1, 1, ' ', 0)
+
+	// List issues and their status
+	for _, issue := range e.data.SprintIssues {
+		fmt.Fprintf(w, "%s\t%s\t%s\n", issue.Status.Acronym, issue.Key, issue.Summary)
+	}
+	fmt.Fprint(w, "\n")
+
+	fmt.Fprintf(w, "# Update the status of any sprint issues\n")
+	fmt.Fprint(w, "#\n")
+	fmt.Fprint(w, "# Commands:\n")
+	fmt.Fprint(w, "#\n")
+
+	for _, t := range e.data.SprintIssues.Transitions() {
+		fmt.Fprintf(w, "# %s\t<key> =\t%s\n", t.Acronym, t.Name)
 	}
 
 	w.Flush()

@@ -142,11 +142,7 @@ func (j Jira) GetBoardID(project string) (int, error) {
 
 	resp, err := j.client.Do(req, nil)
 	if err != nil {
-		b, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return 0, err
-		}
-		return 0, errors.New(string(b))
+		return 0, parseResponseError(resp)
 	}
 	b, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
@@ -192,11 +188,7 @@ func (j Jira) CreateIssues(ctx context.Context, issues []*jira.Issue) error {
 		g.Go(func() error {
 			newIssue, resp, err := j.client.Issue.Create(issue)
 			if err != nil {
-				b, err := io.ReadAll(resp.Body)
-				if err != nil {
-					return err
-				}
-				return errors.New(string(b))
+				return parseResponseError(resp)
 			}
 			fmt.Printf("Created %s - %s\n", newIssue.Key, issue.Fields.Summary)
 			return nil
@@ -238,14 +230,40 @@ func (j Jira) CreateSprint(name string, month, day int) error {
 
 	resp, err := j.client.Do(req, nil)
 	if err != nil {
-		b, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return err
-		}
-		return ErrCreateSprint(string(b))
+		return ErrCreateSprint(parseResponseError(resp).Error())
 	}
 
 	return nil
+}
+
+type issueTransition struct {
+	issueKey   string
+	transition Transition
+}
+
+// TransitionIssues performs batch transitions on a set of issues.
+func (j Jira) TransitionIssues(ctx context.Context, issueTransitions []issueTransition) error {
+	g, _ := errgroup.WithContext(ctx)
+
+	for _, t := range issueTransitions {
+		// allocate variable to avoid scope capturing
+		t := t
+
+		g.Go(func() error {
+			resp, err := j.client.Issue.DoTransitionWithContext(
+				ctx,
+				t.issueKey,
+				t.transition.ID,
+			)
+			if err != nil {
+				return parseResponseError(resp)
+			}
+			fmt.Printf("%s - Status changed to %s\n", t.issueKey, t.transition.Name)
+			return nil
+		})
+	}
+
+	return g.Wait()
 }
 
 // CloneIssues clones a list of issues identified by their keys to a new project.
@@ -291,4 +309,12 @@ func (j Jira) CloneIssues(ctx context.Context, keys []string, project string, sp
 	}
 
 	return j.CreateIssues(ctx, issues)
+}
+
+func parseResponseError(resp *jira.Response) error {
+	b, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	return errors.New(string(b))
 }

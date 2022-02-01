@@ -1,6 +1,9 @@
 package kong
 
 import (
+	"strings"
+	"unicode"
+
 	"github.com/andygrunwald/go-jira"
 )
 
@@ -13,15 +16,33 @@ type Issues []Issue
 type Sprints []Sprint
 
 // Issue is a Jira issue abstraction. The type primarily exists to only
-// serialize a susbet of the data to disk.
+// serialize a subset of the data to disk.
 type Issue struct {
-	Key      string
-	Summary  string
-	Priority string
+	Key                  string
+	Summary              string
+	Priority             string
+	Status               Status
+	Transitions          []Transition
+	TransitionsByAcronym map[string]Transition
+}
+
+// Transition is a Jira transition abstraction. The type primarily exists to
+// only serialize a subset of data to disk.
+type Transition struct {
+	ID          string
+	Name        string
+	Description string
+	Acronym     string
+}
+
+// Status is a Jira status abstraction.
+type Status struct {
+	Name    string
+	Acronym string
 }
 
 // Sprint is a Jira sprint abstraction.  The type primarily exists to only
-// serialize a susbet of the data to disk.
+// serialize a subset of the data to disk.
 type Sprint struct {
 	ID    int
 	Name  string
@@ -32,12 +53,39 @@ type Sprint struct {
 // Issue.
 func NewIssues(issues []jira.Issue) Issues {
 	result := make(Issues, len(issues))
+	transitions := make([]Transition, 0)
+	transitionsByAcronym := make(map[string]Transition)
+
 	for i, issue := range issues {
 		result[i] = Issue{
 			Key:      issue.Key,
 			Summary:  issue.Fields.Summary,
 			Priority: issue.Fields.Priority.Name,
+			Status: Status{
+				Name:    issue.Fields.Status.Name,
+				Acronym: statusAcronym(issue.Fields.Status.Name),
+			},
 		}
+
+		// only initialize list of transitions once
+		if len(transitions) == 0 {
+			transitions = make([]Transition, len(issue.Transitions))
+			for j, transition := range issue.Transitions {
+				acronym := statusAcronym(transition.To.Name)
+				t := Transition{
+					ID:          transition.ID,
+					Name:        transition.To.Name,
+					Description: transition.To.Description,
+					Acronym:     acronym,
+				}
+				transitions[j] = t
+				transitionsByAcronym[acronym] = t
+			}
+		}
+
+		// then reference the initialized lists
+		result[i].Transitions = transitions
+		result[i].TransitionsByAcronym = transitionsByAcronym
 	}
 	return result
 }
@@ -71,4 +119,21 @@ func (s Sprints) ActiveSprint() (Sprint, error) {
 		}
 	}
 	return Sprint{}, ErrNoActiveSprint
+}
+
+// Transitions returns a list of transitions from one of the issues since each
+// issue should have the same set of transitions.
+func (i Issues) Transitions() []Transition {
+	if len(i) == 0 {
+		return nil
+	}
+	return i[0].Transitions
+}
+
+func statusAcronym(name string) string {
+	var s strings.Builder
+	for _, word := range strings.Split(name, " ") {
+		s.WriteRune(unicode.ToLower(rune(word[0])))
+	}
+	return s.String()
 }

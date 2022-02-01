@@ -89,7 +89,7 @@ var sprintIssuesCmd = &cobra.Command{
 		if err != nil {
 			exit(err)
 		}
-		issues.Print()
+		issues.PrintSprint()
 	},
 }
 
@@ -226,6 +226,35 @@ var newSprintCmd = &cobra.Command{
 	},
 }
 
+var sprintCmd = &cobra.Command{
+	Use:   "sprint",
+	Short: "List issues in current sprint",
+	Run: func(cmd *cobra.Command, args []string) {
+		data, err := kong.LoadData()
+		if err != nil {
+			exit(err)
+		}
+		issues, err := data.GetSprintIssues()
+		if err != nil {
+			exit(err)
+		}
+		issues.PrintSprint()
+	},
+}
+
+var editSprintCmd = &cobra.Command{
+	Use:   "edit",
+	Short: "Update sprint board issue progress",
+	Run: func(cmd *cobra.Command, args []string) {
+		ctx := cmd.Context()
+		editor, err := kong.NewEditor(ctx)
+		if err != nil {
+			exit(err)
+		}
+		must(editor.OpenSprintEditor(ctx))
+	},
+}
+
 var configureCmd = &cobra.Command{
 	Use:   "configure",
 	Short: "configure",
@@ -265,6 +294,9 @@ func Execute() {
 	cmd.AddCommand(daemonCmd)
 	cmd.AddCommand(epicsCmd)
 	cmd.AddCommand(cloneCmd)
+
+	cmd.AddCommand(sprintCmd)
+	sprintCmd.AddCommand(editSprintCmd)
 
 	cmd.AddCommand(issuesCmd)
 	issuesCmd.AddCommand(newIssuesCmd)
