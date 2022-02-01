@@ -72,7 +72,7 @@ func (j Jira) ListIssues(project string) (Issues, error) {
 func (j Jira) ListSprintIssues() (Issues, error) {
 	conditions := []string{
 		"project = " + j.config.Project,
-		"issueType IN (Story, Bug)",
+		"issueType IN (Story, Task, Bug)",
 		"assignee = \"" + j.user.DisplayName + "\"",
 		"status != Closed",
 		"sprint in openSprints()",
