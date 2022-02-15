@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 if [ "$(uname)" == "Darwin" ]; then
+	mkdir -p ~/Library/LaunchAgents
 	cp kong.plist ~/Library/LaunchAgents/com.github.konradreiche.kong.plist
 	launchctl unload -w ~/Library/LaunchAgents/com.github.konradreiche.kong.plist || true
 	launchctl load -w ~/Library/LaunchAgents/com.github.konradreiche.kong.plist
