@@ -24,6 +24,7 @@ type Data struct {
 	IssueByKey   map[string]Issue
 	Epics        Issues
 	SprintIssues Issues
+	BoardID      int
 	Sprints      Sprints
 	ActiveSprint Sprint
 	Transitions  []Transition
@@ -103,6 +104,7 @@ func (d *Data) load(ctx context.Context) error {
 	loaders := []func() error{
 		d.loadIssues,
 		d.loadEpics,
+		d.loadBoardID,
 		d.loadSprintIssues,
 		d.loadSprints,
 	}
@@ -144,6 +146,15 @@ func (d *Data) loadEpics() error {
 	return nil
 }
 
+func (d *Data) loadBoardID() error {
+	boardID, err := d.jira.GetBoardID(d.jira.config.Project)
+	if err != nil {
+		return err
+	}
+	d.BoardID = boardID
+	return nil
+}
+
 func (d *Data) loadSprintIssues() error {
 	issues, err := d.jira.ListSprintIssues()
 	if err != nil {
@@ -154,7 +165,12 @@ func (d *Data) loadSprintIssues() error {
 }
 
 func (d *Data) loadSprints() error {
-	sprints, err := d.jira.ListSprints()
+	if d.BoardID == 0 {
+		if err := d.loadBoardID(); err != nil {
+			return nil
+		}
+	}
+	sprints, err := d.jira.ListSprints(d.BoardID)
 	if err != nil {
 		return err
 	}

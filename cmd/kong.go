@@ -218,11 +218,15 @@ var newSprintCmd = &cobra.Command{
 			exitPrompt("Error: day has to be numeric")
 		}
 
+		data, err := kong.LoadData()
+		if err != nil {
+			exit(err)
+		}
 		jira, err := kong.NewJira()
 		if err != nil {
 			exit(err)
 		}
-		must(jira.CreateSprint(name, month, day))
+		must(jira.CreateSprint(name, month, day, data.BoardID))
 	},
 }
 
@@ -272,7 +276,6 @@ var configureCmd = &cobra.Command{
 		must(r.ReadString("Password", &config.Password))
 
 		must(r.ReadString("Project", &config.Project))
-		must(r.ReadInt("Board ID", &config.BoardID))
 		must(r.ReadString("Issue Type", &config.IssueType))
 		must(r.ReadStringSlice("Labels", &config.Labels))
 		must(r.ReadStringSlice("Components", &config.Components))

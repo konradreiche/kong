@@ -112,9 +112,9 @@ func (j Jira) ListEpics(project string) (Issues, error) {
 
 // ListSprints fetches all active and future sprints for the configured board
 // and the specified keyword.
-func (j Jira) ListSprints() (Sprints, error) {
+func (j Jira) ListSprints(boardID int) (Sprints, error) {
 	sprints, _, err := j.client.Board.GetAllSprintsWithOptions(
-		j.config.BoardID,
+		boardID,
 		&jira.GetAllSprintsOptions{
 			State: "active,future",
 		},
@@ -198,7 +198,7 @@ func (j Jira) CreateIssues(ctx context.Context, issues []*jira.Issue) error {
 }
 
 // CreateSprint creates a new sprint.
-func (j Jira) CreateSprint(name string, month, day int) error {
+func (j Jira) CreateSprint(name string, month, day, boardID int) error {
 	// configure start and end date
 	now := time.Now()
 	tz := now.Location()
@@ -220,7 +220,7 @@ func (j Jira) CreateSprint(name string, month, day int) error {
 		Name:          fmt.Sprintf("%s %d/%d", name, month, day),
 		StartDate:     startDate.Format(layout),
 		EndDate:       endDate.Format(layout),
-		OriginBoardID: j.config.BoardID,
+		OriginBoardID: boardID,
 	}
 
 	req, err := j.client.NewRequest("POST", "/rest/agile/1.0/sprint", payload)

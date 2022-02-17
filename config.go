@@ -19,7 +19,6 @@ type Config struct {
 	Password string `yaml:"password"`
 
 	Project      string       `yaml:"project"`
-	BoardID      int          `yaml:"boardID"`
 	IssueType    string       `yaml:"issueType"`
 	Labels       []string     `yaml:"labels"`
 	Components   []string     `yaml:"components"`
