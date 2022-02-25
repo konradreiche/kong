@@ -333,9 +333,15 @@ func (e Editor) parseIssue(columns []string) (*jira.Issue, error) {
 		unknowns[e.config.CustomFields.Epics] = epic.Key
 	}
 
+	var dueDate time.Time
 	if sprintIndex != 0 {
 		sprint := e.data.Sprints[sprintIndex-1]
 		unknowns[e.config.CustomFields.Sprints] = sprint.ID
+
+		// set issue due date to end of sprint if defined
+		if !sprint.EndDate.IsZero() {
+			dueDate = sprint.EndDate
+		}
 	}
 
 	// convert configured components
@@ -346,7 +352,7 @@ func (e Editor) parseIssue(columns []string) (*jira.Issue, error) {
 		}
 	}
 
-	return &jira.Issue{
+	issue := jira.Issue{
 		Fields: &jira.IssueFields{
 			Project: jira.Project{
 				Key: e.config.Project,
@@ -362,7 +368,13 @@ func (e Editor) parseIssue(columns []string) (*jira.Issue, error) {
 			Components:  components,
 			Labels:      e.config.Labels,
 		},
-	}, nil
+	}
+
+	if !dueDate.IsZero() {
+		issue.Fields.Duedate = jira.Date(dueDate)
+	}
+
+	return &issue, nil
 }
 
 func (e Editor) issueTemplate() string {

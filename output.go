@@ -10,7 +10,7 @@ import (
 func (i Issues) Print() {
 	w := tabwriter.NewWriter(os.Stdout, 1, 1, 1, ' ', 0)
 	for _, issue := range i {
-		fmt.Fprintf(w, "%s\t-\t%s\n", issue.Key, issue.Summary)
+		fmt.Fprintf(w, "%s\t-\t%s\t-\t%s\n", issue.Key, issue.Status.Name, issue.Summary)
 	}
 	w.Flush()
 }
@@ -19,7 +19,7 @@ func (i Issues) Print() {
 func (i Issues) PrintSprint() {
 	w := tabwriter.NewWriter(os.Stdout, 1, 1, 1, ' ', 0)
 	for _, issue := range i {
-		fmt.Fprintf(w, "%s\t-\t%s\n", issue.Key, issue.Summary)
+		fmt.Fprintf(w, "%s\t-\t%s\t-\t%s\n", issue.Status.Name, issue.Key, issue.Summary)
 	}
 	w.Flush()
 }
@@ -28,7 +28,11 @@ func (i Issues) PrintSprint() {
 func (s Sprints) Print() {
 	w := tabwriter.NewWriter(os.Stdout, 1, 1, 1, ' ', 0)
 	for _, sprint := range s {
-		fmt.Fprintf(w, "%d\t-\t%s\n", sprint.ID, sprint.Name)
+		endDate := "N/A"
+		if !sprint.EndDate.IsZero() {
+			endDate = sprint.EndDate.Local().Format("2006/1/2")
+		}
+		fmt.Fprintf(w, "%d\t-\t%s\t-\t%s\n", sprint.ID, endDate, sprint.Name)
 	}
 	w.Flush()
 }

@@ -2,6 +2,7 @@ package kong
 
 import (
 	"strings"
+	"time"
 	"unicode"
 
 	"github.com/andygrunwald/go-jira"
@@ -44,9 +45,10 @@ type Status struct {
 // Sprint is a Jira sprint abstraction.  The type primarily exists to only
 // serialize a subset of the data to disk.
 type Sprint struct {
-	ID    int
-	Name  string
-	State string
+	ID      int
+	Name    string
+	State   string
+	EndDate time.Time
 }
 
 // NewIssues returns a new instance of Issues by converting jira.Issue to
@@ -103,11 +105,15 @@ func NewSprints(sprints []jira.Sprint) Sprints {
 // NewSprint returns a new instance of Sprint by converting jira.Sprint to
 // Sprint.
 func NewSprint(sprint jira.Sprint) Sprint {
-	return Sprint{
+	s := Sprint{
 		ID:    sprint.ID,
 		Name:  sprint.Name,
 		State: sprint.State,
 	}
+	if sprint.EndDate != nil {
+		s.EndDate = *sprint.EndDate
+	}
+	return s
 }
 
 // ActiveSprint returns the currently active sprint or an error if there is no
