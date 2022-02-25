@@ -56,6 +56,7 @@ func (j Jira) ListIssues(project string) (Issues, error) {
 		"project = " + project,
 		"issueType IN (Task, Story, Bug)",
 		"assignee = \"" + j.user.DisplayName + "\"",
+		"resolution = Unresolved",
 		"status != Closed",
 	}
 	jql := strings.Join(conditions, " AND ")
@@ -74,7 +75,7 @@ func (j Jira) ListSprintIssues() (Issues, error) {
 		"project = " + j.config.Project,
 		"issueType IN (Story, Task, Bug)",
 		"assignee = \"" + j.user.DisplayName + "\"",
-		"status != Closed",
+		"resolution = Unresolved",
 		"sprint in openSprints()",
 	}
 	jql := strings.Join(conditions, " AND ")
@@ -92,6 +93,7 @@ func (j Jira) ListEpics(project string) (Issues, error) {
 	conditions := []string{
 		"project = " + project,
 		"issueType = Epic",
+		"assignee = \"" + j.user.DisplayName + "\"",
 		"status != Closed",
 	}
 
