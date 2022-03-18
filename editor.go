@@ -109,7 +109,9 @@ func (e Editor) OpenIssueEditor(ctx context.Context) error {
 
 		columns, err := e.parseColumns(lines)
 		if err != nil {
-			return err
+			fmt.Println(err)
+			time.Sleep(2 * time.Second)
+			continue
 		}
 
 		issues, err := e.parseIssues(columns)
