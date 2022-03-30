@@ -18,7 +18,7 @@ import (
 
 var (
 	errMissingColumn     = errors.New("missing column")
-	errEpicMismatch      = errors.New("epic does not exist")
+	errParentMismatch    = errors.New("epic or initiative does not exist")
 	errSprintMismatch    = errors.New("sprint does not exist")
 	errUnknownIssue      = errors.New("issues does not exist")
 	errUnknownTransition = errors.New("transition does not exist")
@@ -32,7 +32,7 @@ type Editor struct {
 	config Config
 }
 
-// jewEditor returns a new instace of Editor.
+// NewEditor returns a new instace of Editor.
 func NewEditor(ctx context.Context) (Editor, error) {
 	var (
 		editor Editor
@@ -107,20 +107,61 @@ func (e Editor) OpenIssueEditor(ctx context.Context) error {
 			return nil
 		}
 
-		columns, err := e.parseColumns(lines)
+		columns, err := e.parseColumns(lines, 5)
 		if err != nil {
 			fmt.Println(err)
 			time.Sleep(2 * time.Second)
 			continue
 		}
 
-		issues, err := e.parseIssues(columns)
+		issues, err := e.parseIssues(columns, e.config.IssueType)
 		if err != nil {
 			fmt.Println(err)
 			time.Sleep(2 * time.Second)
 			continue
 		}
 		return e.jira.CreateIssues(ctx, issues)
+	}
+}
+
+// OpenEpicEditor creates a new file create Jira epics in batches.
+func (e Editor) OpenEpicEditor(ctx context.Context) error {
+	filename, cleanup, err := e.createFile(e.epicTemplate(), "kong-new-epics")
+	if err != nil {
+		return err
+	}
+	defer cleanup()
+
+	for {
+		if err := e.open(ctx, filename, true); err != nil {
+			return err
+		}
+		b, err := os.ReadFile(filename)
+		if err != nil {
+			return err
+		}
+
+		lines := e.parseLines(string(b))
+
+		// abort on empty input
+		if len(lines) == 0 {
+			return nil
+		}
+
+		columns, err := e.parseColumns(lines, 5)
+		if err != nil {
+			fmt.Println(err)
+			time.Sleep(2 * time.Second)
+			continue
+		}
+
+		epics, err := e.parseIssues(columns, "Epic")
+		if err != nil {
+			fmt.Println(err)
+			time.Sleep(2 * time.Second)
+			continue
+		}
+		return e.jira.CreateIssues(ctx, epics)
 	}
 }
 
@@ -262,11 +303,11 @@ func (e Editor) parseLines(s string) []string {
 	return lines
 }
 
-func (e Editor) parseColumns(lines []string) ([][]string, error) {
+func (e Editor) parseColumns(lines []string, numColumns int) ([][]string, error) {
 	columns := make([][]string, len(lines))
 	for i, line := range lines {
-		columns[i] = strings.SplitN(line, ",", 5)
-		if len(columns[i]) != 5 {
+		columns[i] = strings.SplitN(line, ",", numColumns)
+		if len(columns[i]) != numColumns {
 			return nil, errMissingColumn
 		}
 	}
@@ -284,10 +325,10 @@ func (e Editor) parseActionColumns(lines []string) ([][]string, error) {
 	return columns, nil
 }
 
-func (e Editor) parseIssues(columns [][]string) ([]*jira.Issue, error) {
+func (e Editor) parseIssues(columns [][]string, issueType string) ([]*jira.Issue, error) {
 	issues := make([]*jira.Issue, 0)
 	for _, c := range columns {
-		issue, err := e.parseIssue(c)
+		issue, err := e.parseIssue(c, issueType)
 		if err != nil {
 			return nil, err
 		}
@@ -296,8 +337,8 @@ func (e Editor) parseIssues(columns [][]string) ([]*jira.Issue, error) {
 	return issues, nil
 }
 
-func (e Editor) parseIssue(columns []string) (*jira.Issue, error) {
-	epicIndex, err := strconv.Atoi(columns[0])
+func (e Editor) parseIssue(columns []string, issueType string) (*jira.Issue, error) {
+	parentIndex, err := strconv.Atoi(columns[0])
 	if err != nil {
 		return nil, err
 	}
@@ -315,9 +356,15 @@ func (e Editor) parseIssue(columns []string) (*jira.Issue, error) {
 
 	description := columns[4]
 
-	// verify epic index matches available epics
-	if epicIndex < 0 || epicIndex > len(e.data.Epics) {
-		return nil, errEpicMismatch
+	// handle issue and epic creations differently
+	parents := e.data.Epics
+	if issueType == "Epic" {
+		parents = e.data.Initiatives
+	}
+
+	// verify parent index matches available parents
+	if parentIndex < 0 || parentIndex > len(parents) {
+		return nil, errParentMismatch
 	}
 
 	// verify sprint index matches available sprints
@@ -330,9 +377,16 @@ func (e Editor) parseIssue(columns []string) (*jira.Issue, error) {
 	unknowns[e.config.CustomFields.StoryPoints] = storyPoints
 
 	// setting epic or sprint to 0 means unassigned
-	if epicIndex != 0 {
-		epic := e.data.Epics[epicIndex-1]
+	if parentIndex != 0 && issueType == e.config.IssueType {
+		epic := e.data.Epics[parentIndex-1]
 		unknowns[e.config.CustomFields.Epics] = epic.Key
+	}
+
+	// issues and epics have both different custom fields to set
+	if parentIndex != 0 && issueType == "Epic" {
+		initiative := e.data.Initiatives[parentIndex-1]
+		unknowns[e.config.CustomFields.EpicName] = summary
+		unknowns[e.config.CustomFields.ParentLink] = initiative.Key
 	}
 
 	var dueDate time.Time
@@ -362,7 +416,7 @@ func (e Editor) parseIssue(columns []string) (*jira.Issue, error) {
 			Assignee: e.jira.user,
 			Reporter: e.jira.user,
 			Type: jira.IssueType{
-				Name: e.config.IssueType,
+				Name: issueType,
 			},
 			Summary:     summary,
 			Description: description,
@@ -418,6 +472,51 @@ func (e Editor) issueTemplate() string {
 	fmt.Fprint(w, "# New Issues\n")
 	fmt.Fprint(w, "#\n")
 	fmt.Fprint(w, "# Epic, Sprint, Summary, Story Points, Description\n")
+	fmt.Fprint(w, "\n")
+
+	w.Flush()
+	return b.String()
+}
+
+func (e Editor) epicTemplate() string {
+	var b bytes.Buffer
+	w := tabwriter.NewWriter(&b, 1, 1, 1, ' ', 0)
+
+	// determine number of dashes for key and summary column
+	keyBorder := strings.Repeat("-", e.maxInitiativeKeyLength())
+	summaryBorder := strings.Repeat("-", e.maxInitiativeSummaryLength())
+
+	// Epics template
+	fmt.Fprint(w, "# Initiatives\n")
+	fmt.Fprint(w, "#\n")
+	fmt.Fprint(w, "# ID\t|\tKey\t|\tPriority\t|\tSummary\n")
+	fmt.Fprintf(w, "# --\t|\t%s\t|\t--------\t|\t%s\n", keyBorder, summaryBorder)
+	fmt.Fprintf(w, "# %d\t|\t%s\t|\t%s\t|\t%s\n", 0, "", "", "Unassigned")
+	fmt.Fprintf(w, "# --\t|\t%s\t|\t--------\t|\t%s\n", keyBorder, summaryBorder)
+
+	for i, initiative := range e.data.Initiatives {
+		fmt.Fprintf(w, "# %d\t|\t%s\t|\t%s\t|\t%s\n", i+1, initiative.Key, initiative.Priority, initiative.Summary)
+	}
+
+	fmt.Fprintf(w, "# --\t|\t%s\t|\t--------\t|\t%s\n", keyBorder, summaryBorder)
+	fmt.Fprint(w, "#\n#\n")
+
+	// Sprints template
+	fmt.Fprint(w, "# Sprints\n")
+	fmt.Fprint(w, "#\n")
+	fmt.Fprint(w, "# ID\t|\tName\n")
+	fmt.Fprint(w, "# --\t|\t----\n")
+	fmt.Fprint(w, "# 0\t|\tUnassigned\n")
+	for i, sprint := range e.data.Sprints {
+		fmt.Fprintf(w, "# %d\t|\t%s\n", i+1, sprint.Name)
+	}
+
+	fmt.Fprint(w, "#\n")
+
+	// Epics template
+	fmt.Fprint(w, "# New Epics\n")
+	fmt.Fprint(w, "#\n")
+	fmt.Fprint(w, "# Initiative, Sprint, Summary, Story Points, Description\n")
 	fmt.Fprint(w, "\n")
 
 	w.Flush()
@@ -510,6 +609,26 @@ func (e Editor) maxEpicSummaryLength() int {
 	for _, epic := range e.data.Epics {
 		if len(epic.Summary) > max {
 			max = len(epic.Summary)
+		}
+	}
+	return max
+}
+
+func (e Editor) maxInitiativeKeyLength() int {
+	var max int
+	for _, initiative := range e.data.Initiatives {
+		if len(initiative.Key) > max {
+			max = len(initiative.Key)
+		}
+	}
+	return max
+}
+
+func (e Editor) maxInitiativeSummaryLength() int {
+	var max int
+	for _, initiative := range e.data.Initiatives {
+		if len(initiative.Summary) > max {
+			max = len(initiative.Summary)
 		}
 	}
 	return max

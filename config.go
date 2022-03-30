@@ -31,9 +31,13 @@ type Config struct {
 // CustomFields provides configuration of custom fields to map fields like
 // epics, sprints and story points to the Jira backend.
 type CustomFields struct {
+	// custom fields for issue creation
 	Epics       string `yaml:"epics"`
 	Sprints     string `yaml:"sprints"`
 	StoryPoints string `yaml:"storyPoints"`
+	// custom fields for epic creation
+	EpicName   string `yaml:"epicName"`
+	ParentLink string `yaml:"parentLink"`
 }
 
 // Write ensures the configuration directory exists and writes the content of

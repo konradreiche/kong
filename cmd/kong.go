@@ -163,6 +163,48 @@ var epicsCmd = &cobra.Command{
 	},
 }
 
+var newEpicsCmd = &cobra.Command{
+	Use:   "new",
+	Short: "Create new epics",
+	Run: func(cmd *cobra.Command, args []string) {
+		ctx := cmd.Context()
+		editor, err := kong.NewEditor(ctx)
+		if err != nil {
+			exit(err)
+		}
+		must(editor.OpenEpicEditor(ctx))
+	},
+}
+
+var initiativesCmd = &cobra.Command{
+	Use:   "initiatives",
+	Short: "List Initiatives",
+	Run: func(cmd *cobra.Command, args []string) {
+		if projectFlag != "" {
+			jira, err := kong.NewJira()
+			if err != nil {
+				exit(err)
+			}
+			initiatives, err := jira.ListInitiatives(projectFlag)
+			if err != nil {
+				exit(err)
+			}
+			initiatives.Print()
+			return
+		}
+
+		data, err := kong.LoadData()
+		if err != nil {
+			exit(err)
+		}
+		initiatives, err := data.GetInitiatives()
+		if err != nil {
+			exit(err)
+		}
+		initiatives.Print()
+	},
+}
+
 var sprintsCmd = &cobra.Command{
 	Use:   "sprints",
 	Short: "List and create sprints",
@@ -293,18 +335,26 @@ var configureCmd = &cobra.Command{
 // Execute assembles the all commands and sub-commands and executes the
 // program.
 func Execute() {
+	// root coomands
 	cmd.AddCommand(configureCmd)
 	cmd.AddCommand(daemonCmd)
-	cmd.AddCommand(epicsCmd)
+	cmd.AddCommand(initiativesCmd)
 	cmd.AddCommand(cloneCmd)
 
+	// sprint command and sprint sub-commands
 	cmd.AddCommand(sprintCmd)
 	sprintCmd.AddCommand(editSprintCmd)
 
+	// issues command and issues sub-commands
 	cmd.AddCommand(issuesCmd)
 	issuesCmd.AddCommand(newIssuesCmd)
 	issuesCmd.AddCommand(sprintIssuesCmd)
 
+	// epics and epics sub-commands
+	cmd.AddCommand(epicsCmd)
+	epicsCmd.AddCommand(newEpicsCmd)
+
+	// sprints and sprints sub-commands
 	cmd.AddCommand(sprintsCmd)
 	sprintsCmd.AddCommand(newSprintCmd)
 
@@ -312,6 +362,7 @@ func Execute() {
 	for _, cmd := range []*cobra.Command{
 		issuesCmd,
 		epicsCmd,
+		initiativesCmd,
 		sprintsCmd,
 	} {
 		cmd.Flags().StringVarP(&projectFlag, "project", "p", "", "Reference alternative project")

@@ -112,6 +112,30 @@ func (j Jira) ListEpics(project string) (Issues, error) {
 	return NewIssues(issues), nil
 }
 
+// ListInitiatives returns a list of initiatives associated with the current project.
+func (j Jira) ListInitiatives(project string) (Issues, error) {
+	conditions := []string{
+		"project = " + project,
+		"issueType = Initiative",
+		"assignee = \"" + j.user.DisplayName + "\"",
+		"status != Closed",
+	}
+
+	// include query for labels if configured
+	if len(j.config.Labels) > 0 {
+		label := "labels IN (" + strings.Join(j.config.Labels, ",") + ")"
+		conditions = append(conditions, label)
+
+	}
+
+	jql := strings.Join(conditions, " AND ")
+	issues, _, err := j.client.Issue.Search(jql, &jira.SearchOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return NewIssues(issues), nil
+}
+
 // ListSprints fetches all active and future sprints for the configured board
 // and the specified keyword.
 func (j Jira) ListSprints(boardID int) (Sprints, error) {

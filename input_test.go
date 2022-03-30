@@ -71,7 +71,7 @@ func TestParseColumns(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		got, err := Editor{}.parseColumns(tt.lines)
+		got, err := Editor{}.parseColumns(tt.lines, 5)
 		if tt.err == nil && err != nil {
 			t.Fatal(err)
 		}
@@ -130,7 +130,7 @@ func TestParseIssue(t *testing.T) {
 				"description",
 			},
 			want: nil,
-			err:  errEpicMismatch,
+			err:  errParentMismatch,
 		},
 		{
 			name: "fails-missing-epics",
@@ -142,7 +142,7 @@ func TestParseIssue(t *testing.T) {
 				"description",
 			},
 			want: nil,
-			err:  errEpicMismatch,
+			err:  errParentMismatch,
 		},
 		{
 			name: "fails-missing-sprints",
@@ -170,7 +170,7 @@ func TestParseIssue(t *testing.T) {
 			data: tt.data,
 		}
 
-		got, err := editor.parseIssue(tt.columns)
+		got, err := editor.parseIssue(tt.columns, "Issue")
 		if tt.err == nil && err != nil {
 			t.Fatal(err)
 		}

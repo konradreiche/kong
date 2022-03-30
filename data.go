@@ -22,6 +22,7 @@ type Data struct {
 	Timestamp    int64
 	Issues       Issues
 	IssueByKey   map[string]Issue
+	Initiatives  Issues
 	Epics        Issues
 	SprintIssues Issues
 	BoardID      int
@@ -104,6 +105,7 @@ func (d *Data) load(ctx context.Context) error {
 	loaders := []func() error{
 		d.loadIssues,
 		d.loadEpics,
+		d.loadInitiatives,
 		d.loadBoardID,
 		d.loadSprintIssues,
 		d.loadSprints,
@@ -143,6 +145,15 @@ func (d *Data) loadEpics() error {
 		return err
 	}
 	d.Epics = epics
+	return nil
+}
+
+func (d *Data) loadInitiatives() error {
+	initiatives, err := d.jira.ListInitiatives(d.jira.config.Project)
+	if err != nil {
+		return err
+	}
+	d.Initiatives = initiatives
 	return nil
 }
 
@@ -200,6 +211,18 @@ func (d Data) GetEpics() (Issues, error) {
 		return nil, err
 	}
 	return d.Epics, nil
+}
+
+// GetInitiatives returns a list of initiative issues. If the data on disk is
+// out of date it will request the latest issues from Jira.
+func (d Data) GetInitiatives() (Issues, error) {
+	if !d.Stale() {
+		return d.Initiatives, nil
+	}
+	if err := d.loadInitiatives(); err != nil {
+		return nil, err
+	}
+	return d.Initiatives, nil
 }
 
 // GetSprintIssues return a list of issues in the current sprint. If the data

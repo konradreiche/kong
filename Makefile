@@ -19,3 +19,6 @@ status:
 
 logs:
 	journalctl --user -u kong.service -f
+
+install-linter:
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.45.2
