@@ -26,6 +26,10 @@ type Config struct {
 
 	SprintKeyword  string `yaml:"sprintKeyword"`
 	SprintDuration int    `yaml:"sprintDuration"`
+
+	CopyCommand           string `yaml:"copyCommand"`
+	SprintStandupTemplate string `yaml:"sprintStandupTemplate"`
+	EpicStandupTemplate   string `yaml:"epicStandupTemplate"`
 }
 
 // CustomFields provides configuration of custom fields to map fields like

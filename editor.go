@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"text/tabwriter"
+	"text/template"
 	"time"
 
 	"github.com/andygrunwald/go-jira"
@@ -277,6 +278,51 @@ func (e Editor) OpenSprintEditor(ctx context.Context) error {
 		}
 		return e.jira.TransitionIssues(ctx, updateIssues)
 	}
+}
+
+// OpenStandupEditor creates a new file to edit the sprint board issue progress.
+func (e Editor) OpenStandupEditor(ctx context.Context, standupType string) error {
+	var buf bytes.Buffer
+
+	switch standupType {
+	case "sprint":
+		text := e.config.SprintStandupTemplate
+		tmpl, err := template.New("standup").Parse(text)
+		if err != nil {
+			return err
+		}
+		if err := tmpl.Execute(&buf, e.data.SprintIssues); err != nil {
+			return err
+		}
+	case "epics":
+		text := e.config.EpicStandupTemplate
+		tmpl, err := template.New("standup").Parse(text)
+		if err != nil {
+			return err
+		}
+		if err := tmpl.Execute(&buf, e.data.Epics); err != nil {
+			return err
+		}
+	}
+
+	filename, cleanup, err := e.createFile(buf.String(), "kong-standup")
+	if err != nil {
+		return err
+	}
+	defer cleanup()
+
+	if err := e.open(ctx, filename, false); err != nil {
+		return err
+	}
+
+	b, err := os.ReadFile(filename)
+	if err != nil {
+		return err
+	}
+
+	cmd := exec.Command(e.config.CopyCommand)
+	cmd.Stdin = bytes.NewBuffer(b)
+	return cmd.Run()
 }
 
 func (e Editor) open(ctx context.Context, filename string, lastLine bool) error {

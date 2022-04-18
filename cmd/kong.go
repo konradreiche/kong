@@ -301,6 +301,20 @@ var editSprintCmd = &cobra.Command{
 	},
 }
 
+var standupCmd = &cobra.Command{
+	Use:   "standup",
+	Short: "Create a template-based Slack standup message",
+	Args:  cobra.MinimumNArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		ctx := cmd.Context()
+		editor, err := kong.NewEditor(ctx)
+		if err != nil {
+			exit(err)
+		}
+		must(editor.OpenStandupEditor(ctx, args[0]))
+	},
+}
+
 var configureCmd = &cobra.Command{
 	Use:   "configure",
 	Short: "configure",
@@ -328,6 +342,8 @@ var configureCmd = &cobra.Command{
 		must(r.ReadString("Epic Field", &config.CustomFields.Epics))
 		must(r.ReadString("Sprint Field", &config.CustomFields.Sprints))
 		must(r.ReadString("Story Points", &config.CustomFields.StoryPoints))
+
+		must(r.ReadString("Copy Command", &config.CopyCommand))
 		must(config.Write())
 	},
 }
@@ -340,6 +356,7 @@ func Execute() {
 	cmd.AddCommand(daemonCmd)
 	cmd.AddCommand(initiativesCmd)
 	cmd.AddCommand(cloneCmd)
+	cmd.AddCommand(standupCmd)
 
 	// sprint command and sprint sub-commands
 	cmd.AddCommand(sprintCmd)

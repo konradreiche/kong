@@ -117,7 +117,6 @@ func (j Jira) ListInitiatives(project string) (Issues, error) {
 	conditions := []string{
 		"project = " + project,
 		"issueType = Initiative",
-		"assignee = \"" + j.user.DisplayName + "\"",
 		"status != Closed",
 	}
 
