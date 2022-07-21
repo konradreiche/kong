@@ -93,47 +93,6 @@ var sprintIssuesCmd = &cobra.Command{
 	},
 }
 
-var cloneCmd = &cobra.Command{
-	Use:                   "clone [project] [sprint] [story point factor]",
-	Short:                 "Clone issues from current project into another",
-	Args:                  cobra.MinimumNArgs(3),
-	DisableFlagsInUseLine: true,
-	Run: func(cmd *cobra.Command, args []string) {
-		ctx := cmd.Context()
-
-		// parse arguments
-		project := args[0]
-		sprint, err := strconv.ParseInt(args[1], 10, 64)
-		if err != nil {
-			exit(err)
-		}
-		spFactor, err := strconv.ParseFloat(args[2], 64)
-		if err != nil {
-			exit(err)
-		}
-
-		jira, err := kong.NewJira()
-		if err != nil {
-			exit(err)
-		}
-		issues, err := jira.ListIssues(project)
-		if err != nil {
-			exit(err)
-		}
-
-		editor, err := kong.NewEditor(ctx)
-		if err != nil {
-			exit(err)
-		}
-		must(editor.OpenCloneEditor(ctx, kong.CloneEditorArgs{
-			Project:  project,
-			Sprint:   int(sprint),
-			SPFactor: spFactor,
-			Issues:   issues,
-		}))
-	},
-}
-
 var epicsCmd = &cobra.Command{
 	Use:   "epics",
 	Short: "List epics",
@@ -355,7 +314,6 @@ func Execute() {
 	cmd.AddCommand(configureCmd)
 	cmd.AddCommand(daemonCmd)
 	cmd.AddCommand(initiativesCmd)
-	cmd.AddCommand(cloneCmd)
 	cmd.AddCommand(standupCmd)
 
 	// sprint command and sprint sub-commands

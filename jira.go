@@ -7,12 +7,10 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"math"
 	"strings"
 	"time"
 
 	"github.com/andygrunwald/go-jira"
-	"github.com/trivago/tgo/tcontainer"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -304,51 +302,6 @@ func (j Jira) MoveIssuesToBacklog(ctx context.Context, keys []string) error {
 		fmt.Printf("%s - Moved to backlog\n", key)
 	}
 	return nil
-}
-
-// CloneIssues clones a list of issues identified by their keys to a new project.
-func (j Jira) CloneIssues(ctx context.Context, keys []string, project string, sprint int, spFactor float64) error {
-	conditions := []string{
-		"project = " + j.config.Project,
-		"key IN (" + strings.Join(keys, ", ") + ")",
-	}
-	jql := strings.Join(conditions, " AND ")
-	list, _, err := j.client.Issue.Search(jql, &jira.SearchOptions{})
-	if err != nil {
-		return err
-	}
-
-	issues := make([]*jira.Issue, len(list))
-	for i, issue := range list {
-		unknowns := tcontainer.NewMarshalMap()
-		unknowns[j.config.CustomFields.Sprints] = sprint
-
-		// adjust story points
-		storyPoints, ok := issue.Fields.Unknowns[j.config.CustomFields.StoryPoints].(float64)
-		if !ok {
-			return fmt.Errorf(
-				"unexpected type for story points field: %T",
-				issue.Fields.Unknowns[j.config.CustomFields.StoryPoints])
-		}
-		unknowns[j.config.CustomFields.StoryPoints] = math.Ceil(storyPoints * spFactor)
-
-		issues[i] = &jira.Issue{
-			Fields: &jira.IssueFields{
-				// set project to clone target
-				Project: jira.Project{
-					Key: project,
-				},
-				Assignee:    issue.Fields.Assignee,
-				Reporter:    issue.Fields.Reporter,
-				Type:        issue.Fields.Type,
-				Summary:     issue.Fields.Summary,
-				Description: issue.Fields.Description,
-				Unknowns:    unknowns,
-			},
-		}
-	}
-
-	return j.CreateIssues(ctx, issues)
 }
 
 func parseResponseError(resp *jira.Response) error {

@@ -15,7 +15,7 @@ kong
 - Create issues in batch
 - Create sprints
 - Update sprint issue statuses
-- Clone issues across projects
+- Generate text-based standup messages
 
 ## Installation
 
