@@ -249,7 +249,11 @@ func (e Editor) OpenSprintEditor(ctx context.Context) error {
 			return err
 		}
 
-		var updateIssues []issueTransition
+		var (
+			issueTransitions    []issueTransition
+			moveIssuesToBacklog []string
+		)
+
 		for _, row := range columns {
 			action := row[0]
 			key := row[1]
@@ -264,6 +268,11 @@ func (e Editor) OpenSprintEditor(ctx context.Context) error {
 				continue
 			}
 
+			if action == backlogAcronym {
+				moveIssuesToBacklog = append(moveIssuesToBacklog, key)
+				continue
+			}
+
 			// look up transition based on action specified as acronym
 			transition, ok := issue.TransitionsByAcronym[action]
 			if !ok {
@@ -271,12 +280,15 @@ func (e Editor) OpenSprintEditor(ctx context.Context) error {
 			}
 
 			// construct tuple to perform issue transitions
-			updateIssues = append(updateIssues, issueTransition{
+			issueTransitions = append(issueTransitions, issueTransition{
 				issueKey:   key,
 				transition: transition,
 			})
 		}
-		return e.jira.TransitionIssues(ctx, updateIssues)
+		if err := e.jira.MoveIssuesToBacklog(ctx, moveIssuesToBacklog); err != nil {
+			return err
+		}
+		return e.jira.TransitionIssues(ctx, issueTransitions)
 	}
 }
 
@@ -635,6 +647,8 @@ func (e Editor) sprintTemplate() string {
 	for _, t := range e.data.SprintIssues.Transitions() {
 		fmt.Fprintf(w, "# %s\t<key> =\t%s\n", t.Acronym, t.Name)
 	}
+	fmt.Fprint(w, "#\n")
+	fmt.Fprintf(w, "# %s\t<key> =\tMove into backlog\n", backlogAcronym)
 
 	w.Flush()
 	return b.String()

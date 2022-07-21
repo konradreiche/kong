@@ -203,15 +203,14 @@ func (j Jira) ListSprintsForBoard(boardID int) (Sprints, error) {
 
 // CreateIssues creates the given issues in parallel.
 func (j Jira) CreateIssues(ctx context.Context, issues []*jira.Issue) error {
-	g, _ := errgroup.WithContext(ctx)
-
+	g, ctx := errgroup.WithContext(ctx)
 	for _, issue := range issues {
 		// allocate variable to avoid scope capturing
 		issue := issue
 
 		// create issues concurrency
 		g.Go(func() error {
-			newIssue, resp, err := j.client.Issue.Create(issue)
+			newIssue, resp, err := j.client.Issue.CreateWithContext(ctx, issue)
 			if err != nil {
 				return parseResponseError(resp)
 			}
@@ -268,8 +267,7 @@ type issueTransition struct {
 
 // TransitionIssues performs batch transitions on a set of issues.
 func (j Jira) TransitionIssues(ctx context.Context, issueTransitions []issueTransition) error {
-	g, _ := errgroup.WithContext(ctx)
-
+	g, ctx := errgroup.WithContext(ctx)
 	for _, t := range issueTransitions {
 		// allocate variable to avoid scope capturing
 		t := t
@@ -289,6 +287,23 @@ func (j Jira) TransitionIssues(ctx context.Context, issueTransitions []issueTran
 	}
 
 	return g.Wait()
+}
+
+func (j Jira) MoveIssuesToBacklog(ctx context.Context, keys []string) error {
+	req, err := j.client.NewRequest("POST", "/rest/agile/1.0/backlog/issue", map[string]interface{}{
+		"issues": keys,
+	})
+	if err != nil {
+		return err
+	}
+	resp, err := j.client.Do(req, nil)
+	if err != nil {
+		return parseResponseError(resp)
+	}
+	for _, key := range keys {
+		fmt.Printf("%s - Moved to backlog\n", key)
+	}
+	return nil
 }
 
 // CloneIssues clones a list of issues identified by their keys to a new project.

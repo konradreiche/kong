@@ -11,7 +11,10 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-const expiry = refreshRate * 2
+const (
+	expiry         = refreshRate * 2
+	backlogAcronym = "ice"
+)
 
 // Data contains all Jira data into one type to easily access any relevant
 // information from the CLI but also to serialize and deserialize the data from
