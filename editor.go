@@ -21,7 +21,7 @@ var (
 	errMissingColumn     = errors.New("missing column")
 	errParentMismatch    = errors.New("epic or initiative does not exist")
 	errSprintMismatch    = errors.New("sprint does not exist")
-	errUnknownIssue      = errors.New("issues does not exist")
+	errUnknownIssue      = errors.New("issue does not exist")
 	errUnknownTransition = errors.New("transition does not exist")
 )
 
@@ -206,7 +206,7 @@ func (e Editor) OpenSprintEditor(ctx context.Context) error {
 
 			issue, ok := e.data.IssueByKey[key]
 			if !ok {
-				return errUnknownIssue
+				return fmt.Errorf("%w: %s", errUnknownIssue, key)
 			}
 
 			// skip issues without transition to apply
