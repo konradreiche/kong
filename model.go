@@ -20,13 +20,14 @@ type Sprints []Sprint
 // Issue is a Jira issue abstraction. The type primarily exists to only
 // serialize a subset of the data to disk.
 type Issue struct {
-	Key                     string
-	Summary                 string
-	Priority                string
-	Status                  Status
-	Transitions             []Transition
-	TransitionsByAcronym    map[string]Transition
-	OrderByTransitionStatus map[string]int
+	Key                     string                `yaml:"-"`
+	Summary                 string                `yaml:"summary"`
+	Priority                string                `yaml:"-"`
+	Status                  Status                `yaml:"-"`
+	Transitions             []Transition          `yaml:"-"`
+	TransitionsByAcronym    map[string]Transition `yaml:"-"`
+	OrderByTransitionStatus map[string]int        `yaml:"-"`
+	SprintID                int                   `yaml:"sprintID"`
 }
 
 // Transition is a Jira transition abstraction. The type primarily exists to
@@ -56,7 +57,7 @@ type Sprint struct {
 
 // NewIssues returns a new instance of Issues by converting jira.Issue to
 // Issue.
-func NewIssues(issues []jira.Issue) Issues {
+func NewIssues(issues []jira.Issue, customFields CustomFields) Issues {
 	result := make(Issues, len(issues))
 	transitions := make([]Transition, 0)
 	transitionsByAcronym := make(map[string]Transition)
@@ -95,6 +96,18 @@ func NewIssues(issues []jira.Issue) Issues {
 		result[i].Transitions = transitions
 		result[i].TransitionsByAcronym = transitionsByAcronym
 		result[i].OrderByTransitionStatus = orderByTransitionStatus
+
+		// set sprint
+		if issue.Fields.Unknowns[customFields.Sprints] != nil {
+			sprints := issue.Fields.Unknowns[customFields.Sprints].([]interface{})
+			for _, item := range sprints {
+				sprint := item.(map[string]interface{})
+				if sprint["state"] == "active" {
+					result[i].SprintID = int(sprint["id"].(float64))
+					break
+				}
+			}
+		}
 	}
 	return result
 }

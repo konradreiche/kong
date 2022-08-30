@@ -70,6 +70,28 @@ var issuesCmd = &cobra.Command{
 	},
 }
 
+var issueCmd = &cobra.Command{
+	Use:   "issue",
+	Short: "Perform actions on an issue",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+	},
+}
+
+var editIssueCmd = &cobra.Command{
+	Use:   "edit",
+	Short: "Edit an existing issue",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		ctx := cmd.Context()
+		editor, err := kong.NewEditor(ctx)
+		if err != nil {
+			exit(err)
+		}
+		must(editor.OpenEditIssueEditor(ctx, args[0]))
+	},
+}
+
 var newIssuesCmd = &cobra.Command{
 	Use:   "new",
 	Short: "Create new issues",
@@ -79,7 +101,7 @@ var newIssuesCmd = &cobra.Command{
 		if err != nil {
 			exit(err)
 		}
-		must(editor.OpenIssueEditor(ctx))
+		must(editor.OpenNewIssueEditor(ctx))
 	},
 }
 
@@ -191,7 +213,7 @@ var sprintsCmd = &cobra.Command{
 var newSprintCmd = &cobra.Command{
 	Use:                   "new [name] [mm/dd]",
 	Short:                 "Create a new sprint",
-	Args:                  cobra.MinimumNArgs(2),
+	Args:                  cobra.ExactArgs(2),
 	DisableFlagsInUseLine: true,
 	Run: func(cmd *cobra.Command, args []string) {
 		name := args[0]
@@ -254,7 +276,7 @@ var editSprintCmd = &cobra.Command{
 var standupCmd = &cobra.Command{
 	Use:   "standup",
 	Short: "Create a template-based Slack standup message",
-	Args:  cobra.MinimumNArgs(1),
+	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		ctx := cmd.Context()
 		editor, err := kong.NewEditor(ctx)
@@ -339,6 +361,10 @@ func Execute() {
 	// issues command and issues sub-commands
 	cmd.AddCommand(issuesCmd)
 	issuesCmd.AddCommand(newIssuesCmd)
+
+	// issue command and issue sub-commands
+	cmd.AddCommand(issueCmd)
+	issueCmd.AddCommand(editIssueCmd)
 
 	// epics and epics sub-commands
 	cmd.AddCommand(epicsCmd)

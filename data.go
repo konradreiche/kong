@@ -31,6 +31,7 @@ type Data struct {
 	SprintIssues     Issues
 	BoardID          int
 	Sprints          Sprints
+	SprintsByName    map[string]Sprint
 	ActiveSprint     Sprint
 	Transitions      []Transition
 	LastIssueCreated string
@@ -39,7 +40,8 @@ type Data struct {
 // NewData returns a new instance of Data.
 func NewData() Data {
 	return Data{
-		IssueByKey: make(map[string]Issue),
+		IssueByKey:    make(map[string]Issue),
+		SprintsByName: make(map[string]Sprint),
 	}
 }
 
@@ -192,6 +194,9 @@ func (d *Data) loadSprints(ctx context.Context) error {
 	sprints, err := d.jira.ListSprints(d.BoardID)
 	if err != nil {
 		return err
+	}
+	for _, sprint := range sprints {
+		d.SprintsByName[sprint.Name] = sprint
 	}
 	d.Sprints = sprints
 	return nil

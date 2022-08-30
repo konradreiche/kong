@@ -15,6 +15,7 @@ import (
 
 	"github.com/andygrunwald/go-jira"
 	"github.com/trivago/tgo/tcontainer"
+	"gopkg.in/yaml.v2"
 )
 
 var (
@@ -84,8 +85,8 @@ func (e Editor) createFile(template, filename string) (string, func(), error) {
 	return f.Name(), cleanup, nil
 }
 
-// OpenIssueEditor creates a new file create Jira issues in batches.
-func (e Editor) OpenIssueEditor(ctx context.Context) error {
+// OpenNewIssueEditor creates a new file create Jira issues in batches.
+func (e Editor) OpenNewIssueEditor(ctx context.Context) error {
 	filename, cleanup, err := e.createFile(e.issueTemplate(), "kong-new-issues")
 	if err != nil {
 		return err
@@ -122,6 +123,39 @@ func (e Editor) OpenIssueEditor(ctx context.Context) error {
 			continue
 		}
 		return e.jira.CreateIssues(ctx, issues)
+	}
+}
+
+func (e Editor) OpenEditIssueEditor(ctx context.Context, key string) error {
+	issue, ok := e.data.IssueByKey[key]
+	if !ok {
+		return fmt.Errorf("%w: %s", errUnknownIssue, key)
+	}
+	b, err := yaml.Marshal(issue)
+	if err != nil {
+		return err
+	}
+	filename, cleanup, err := e.createFile(e.editIssueTemplate(key, b), "kong-edit-issue")
+	if err != nil {
+		return err
+	}
+	defer cleanup()
+
+	for {
+		if err := e.open(ctx, filename, true); err != nil {
+			return err
+		}
+		b, err := os.ReadFile(filename)
+		if err != nil {
+			return err
+		}
+		var issue Issue
+		if err := yaml.Unmarshal(b, &issue); err != nil {
+			fmt.Println(err)
+			time.Sleep(2 * time.Second)
+			continue
+		}
+		return e.jira.UpdateIssue(ctx, key, issue)
 	}
 }
 
@@ -552,6 +586,13 @@ func (e Editor) sprintTemplate(includeDone bool) string {
 	fmt.Fprintf(w, "# %s\t<key> =\tMove into backlog\n", backlogAcronym)
 
 	w.Flush()
+	return b.String()
+}
+
+func (e Editor) editIssueTemplate(key string, yaml []byte) string {
+	var b bytes.Buffer
+	fmt.Fprintf(&b, "# %s\n", key)
+	fmt.Fprint(&b, string(yaml))
 	return b.String()
 }
 

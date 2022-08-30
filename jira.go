@@ -63,7 +63,7 @@ func (j Jira) ListIssues(ctx context.Context, project string) (Issues, error) {
 	if err != nil {
 		return nil, err
 	}
-	return NewIssues(list), nil
+	return NewIssues(list, j.config.CustomFields), nil
 }
 
 // ListSprintIssues fetches all issues assigned to the current sprint.
@@ -79,7 +79,7 @@ func (j Jira) ListSprintIssues(ctx context.Context) (Issues, error) {
 	if err != nil {
 		return nil, err
 	}
-	return NewIssues(list), nil
+	return NewIssues(list, j.config.CustomFields), nil
 }
 
 // ListEpics returns a list of epics associated wtih the current project.
@@ -103,7 +103,7 @@ func (j Jira) ListEpics(project string) (Issues, error) {
 	if err != nil {
 		return nil, err
 	}
-	return NewIssues(issues), nil
+	return NewIssues(issues, j.config.CustomFields), nil
 }
 
 // ListInitiatives returns a list of initiatives associated with the current project.
@@ -119,7 +119,7 @@ func (j Jira) ListInitiatives(project string) (Issues, error) {
 	if err != nil {
 		return nil, err
 	}
-	return NewIssues(issues), nil
+	return NewIssues(issues, j.config.CustomFields), nil
 }
 
 // ListSprints fetches all active and future sprints for the configured board
@@ -221,6 +221,35 @@ func (j Jira) CreateIssues(ctx context.Context, issues []*jira.Issue) error {
 	}
 	data.LastIssueCreated = lastIssueCreated
 	return data.writeFile()
+}
+
+func (j Jira) UpdateIssue(ctx context.Context, key string, issue Issue) error {
+	data := map[string]interface{}{
+		"update": make(map[string]interface{}),
+	}
+	data["update"] = map[string][]map[string]interface{}{
+		"summary": {
+			{
+				"set": issue.Summary,
+			},
+		},
+	}
+
+	if issue.SprintID != 0 {
+		updates := data["update"].(map[string][]map[string]interface{})
+		updates[j.config.CustomFields.Sprints] = []map[string]interface{}{
+			{
+				"set": issue.SprintID,
+			},
+		}
+	}
+
+	resp, err := j.client.Issue.UpdateIssueWithContext(ctx, key, data)
+	if err != nil {
+		return parseResponseError(resp)
+	}
+	fmt.Printf("Updated issue %s\n", key)
+	return nil
 }
 
 // CreateSprint creates a new sprint.
