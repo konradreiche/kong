@@ -1,6 +1,7 @@
 package kong
 
 import (
+	"sort"
 	"strings"
 	"time"
 	"unicode"
@@ -19,12 +20,13 @@ type Sprints []Sprint
 // Issue is a Jira issue abstraction. The type primarily exists to only
 // serialize a subset of the data to disk.
 type Issue struct {
-	Key                  string
-	Summary              string
-	Priority             string
-	Status               Status
-	Transitions          []Transition
-	TransitionsByAcronym map[string]Transition
+	Key                     string
+	Summary                 string
+	Priority                string
+	Status                  Status
+	Transitions             []Transition
+	TransitionsByAcronym    map[string]Transition
+	OrderByTransitionStatus map[string]int
 }
 
 // Transition is a Jira transition abstraction. The type primarily exists to
@@ -57,6 +59,7 @@ func NewIssues(issues []jira.Issue) Issues {
 	result := make(Issues, len(issues))
 	transitions := make([]Transition, 0)
 	transitionsByAcronym := make(map[string]Transition)
+	orderByTransitionStatus := make(map[string]int, len(transitions))
 
 	for i, issue := range issues {
 		result[i] = Issue{
@@ -82,12 +85,14 @@ func NewIssues(issues []jira.Issue) Issues {
 				}
 				transitions[j] = t
 				transitionsByAcronym[acronym] = t
+				orderByTransitionStatus[transition.To.Name] = j
 			}
 		}
 
 		// then reference the initialized lists
 		result[i].Transitions = transitions
 		result[i].TransitionsByAcronym = transitionsByAcronym
+		result[i].OrderByTransitionStatus = orderByTransitionStatus
 	}
 	return result
 }
@@ -135,6 +140,16 @@ func (i Issues) Transitions() []Transition {
 	}
 	return i[0].Transitions
 }
+
+func (i Issues) Sort() Issues {
+	sort.Slice(i, func(a, b int) bool {
+		return i[a].OrderByTransitionStatus[i[a].Status.Name] <
+			i[b].OrderByTransitionStatus[i[b].Status.Name]
+	})
+	return i
+}
+
+// order by implicit transition status order returned from the Jira API
 
 func statusAcronym(name string) string {
 	var s strings.Builder

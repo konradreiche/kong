@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"strings"
 	"time"
 
@@ -165,7 +164,7 @@ func (j Jira) GetBoardID(project string) (int, error) {
 	if err != nil {
 		return 0, parseResponseError(resp)
 	}
-	b, err := ioutil.ReadAll(resp.Body)
+	b, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return 0, err
 	}

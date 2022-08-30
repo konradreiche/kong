@@ -9,7 +9,7 @@ import (
 // Print formats a list of issues and writes them to stdout.
 func (i Issues) Print() {
 	w := tabwriter.NewWriter(os.Stdout, 1, 1, 1, ' ', 0)
-	for _, issue := range i {
+	for _, issue := range i.Sort() {
 		fmt.Fprintf(w, "%s\t-\t%s\t-\t%s\n", issue.Key, issue.Status.Name, issue.Summary)
 	}
 	w.Flush()
@@ -18,7 +18,7 @@ func (i Issues) Print() {
 // Print formats a list of issues with sprint status and writes them to stdout.
 func (i Issues) PrintSprint() {
 	w := tabwriter.NewWriter(os.Stdout, 1, 1, 1, ' ', 0)
-	for _, issue := range i {
+	for _, issue := range i.Sort() {
 		fmt.Fprintf(w, "%s\t-\t%s\t-\t%s\n", issue.Status.Name, issue.Key, issue.Summary)
 	}
 	w.Flush()
