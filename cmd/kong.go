@@ -10,7 +10,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var projectFlag string
+var (
+	projectFlag string
+	allFlag     bool
+)
 
 func main() {
 	Execute()
@@ -75,22 +78,6 @@ var newIssuesCmd = &cobra.Command{
 			exit(err)
 		}
 		must(editor.OpenIssueEditor(ctx))
-	},
-}
-
-var sprintIssuesCmd = &cobra.Command{
-	Use:   "sprint",
-	Short: "List issues in current sprint",
-	Run: func(cmd *cobra.Command, args []string) {
-		data, err := kong.LoadData()
-		if err != nil {
-			exit(err)
-		}
-		issues, err := data.GetSprintIssues(cmd.Context())
-		if err != nil {
-			exit(err)
-		}
-		issues.PrintSprint()
 	},
 }
 
@@ -244,20 +231,21 @@ var sprintCmd = &cobra.Command{
 		if err != nil {
 			exit(err)
 		}
-		issues.PrintSprint()
+		issues.PrintSprint(allFlag)
 	},
 }
 
 var editSprintCmd = &cobra.Command{
 	Use:   "edit",
 	Short: "Update sprint board issue progress",
+	Args:  cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		ctx := cmd.Context()
 		editor, err := kong.NewEditor(ctx)
 		if err != nil {
 			exit(err)
 		}
-		must(editor.OpenSprintEditor(ctx))
+		must(editor.OpenSprintEditor(ctx, allFlag))
 	},
 }
 
@@ -324,7 +312,6 @@ func Execute() {
 	// issues command and issues sub-commands
 	cmd.AddCommand(issuesCmd)
 	issuesCmd.AddCommand(newIssuesCmd)
-	issuesCmd.AddCommand(sprintIssuesCmd)
 
 	// epics and epics sub-commands
 	cmd.AddCommand(epicsCmd)
@@ -335,6 +322,8 @@ func Execute() {
 	sprintsCmd.AddCommand(newSprintCmd)
 
 	// configure flags
+	sprintCmd.Flags().BoolVarP(&allFlag, "all", "a", false, "Include issues that are done")
+
 	for _, cmd := range []*cobra.Command{
 		issuesCmd,
 		epicsCmd,

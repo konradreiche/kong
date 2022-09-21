@@ -16,9 +16,12 @@ func (i Issues) Print() {
 }
 
 // Print formats a list of issues with sprint status and writes them to stdout.
-func (i Issues) PrintSprint() {
+func (i Issues) PrintSprint(includeDone bool) {
 	w := tabwriter.NewWriter(os.Stdout, 1, 1, 1, ' ', 0)
 	for _, issue := range i.Sort() {
+		if issue.Status.IsDone && !includeDone {
+			continue
+		}
 		fmt.Fprintf(w, "%s\t-\t%s\t-\t%s\n", issue.Status.Name, issue.Key, issue.Summary)
 	}
 	w.Flush()

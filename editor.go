@@ -167,8 +167,8 @@ func (e Editor) OpenEpicEditor(ctx context.Context) error {
 }
 
 // OpenSprintEditor creates a new file to edit the sprint board issue progress.
-func (e Editor) OpenSprintEditor(ctx context.Context) error {
-	filename, cleanup, err := e.createFile(e.sprintTemplate(), "kong-sprint")
+func (e Editor) OpenSprintEditor(ctx context.Context, includeDone bool) error {
+	filename, cleanup, err := e.createFile(e.sprintTemplate(includeDone), "kong-sprint")
 	if err != nil {
 		return err
 	}
@@ -527,12 +527,15 @@ func (e Editor) epicTemplate() string {
 	return b.String()
 }
 
-func (e Editor) sprintTemplate() string {
+func (e Editor) sprintTemplate(includeDone bool) string {
 	var b bytes.Buffer
 	w := tabwriter.NewWriter(&b, 1, 1, 1, ' ', 0)
 
 	// List issues and their status
-	for _, issue := range e.data.SprintIssues {
+	for _, issue := range e.data.SprintIssues.Sort() {
+		if issue.Status.IsDone && !includeDone {
+			continue
+		}
 		fmt.Fprintf(w, "%s\t%s\t%s\n", issue.Status.Acronym, issue.Key, issue.Summary)
 	}
 	fmt.Fprint(w, "\n")

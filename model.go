@@ -42,6 +42,7 @@ type Transition struct {
 type Status struct {
 	Name    string
 	Acronym string
+	IsDone  bool
 }
 
 // Sprint is a Jira sprint abstraction.  The type primarily exists to only
@@ -69,6 +70,7 @@ func NewIssues(issues []jira.Issue) Issues {
 			Status: Status{
 				Name:    issue.Fields.Status.Name,
 				Acronym: statusAcronym(issue.Fields.Status.Name),
+				IsDone:  issue.Fields.Status.StatusCategory.Key == "done",
 			},
 		}
 
