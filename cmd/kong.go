@@ -40,12 +40,13 @@ var issuesCmd = &cobra.Command{
 	Use:   "issues",
 	Short: "List and create issues",
 	Run: func(cmd *cobra.Command, args []string) {
+		ctx := cmd.Context()
 		if projectFlag != "" {
 			jira, err := kong.NewJira()
 			if err != nil {
 				exit(err)
 			}
-			issues, err := jira.ListIssues(projectFlag)
+			issues, err := jira.ListIssues(ctx, projectFlag)
 			if err != nil {
 				exit(err)
 			}
@@ -56,7 +57,7 @@ var issuesCmd = &cobra.Command{
 		if err != nil {
 			exit(err)
 		}
-		issues, err := data.GetIssues()
+		issues, err := data.GetIssues(ctx)
 		if err != nil {
 			exit(err)
 		}
@@ -85,7 +86,7 @@ var sprintIssuesCmd = &cobra.Command{
 		if err != nil {
 			exit(err)
 		}
-		issues, err := data.GetSprintIssues()
+		issues, err := data.GetSprintIssues(cmd.Context())
 		if err != nil {
 			exit(err)
 		}
@@ -114,7 +115,7 @@ var epicsCmd = &cobra.Command{
 		if err != nil {
 			exit(err)
 		}
-		epics, err := data.GetEpics()
+		epics, err := data.GetEpics(cmd.Context())
 		if err != nil {
 			exit(err)
 		}
@@ -156,7 +157,7 @@ var initiativesCmd = &cobra.Command{
 		if err != nil {
 			exit(err)
 		}
-		initiatives, err := data.GetInitiatives()
+		initiatives, err := data.GetInitiatives(cmd.Context())
 		if err != nil {
 			exit(err)
 		}
@@ -190,7 +191,7 @@ var sprintsCmd = &cobra.Command{
 		if err != nil {
 			exit(err)
 		}
-		sprints, err := data.GetSprints()
+		sprints, err := data.GetSprints(cmd.Context())
 		if err != nil {
 			exit(err)
 		}
@@ -239,7 +240,7 @@ var sprintCmd = &cobra.Command{
 		if err != nil {
 			exit(err)
 		}
-		issues, err := data.GetSprintIssues()
+		issues, err := data.GetSprintIssues(cmd.Context())
 		if err != nil {
 			exit(err)
 		}

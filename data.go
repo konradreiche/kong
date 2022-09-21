@@ -105,7 +105,7 @@ func (d *Data) load(ctx context.Context) error {
 	}
 	d.jira = jira
 
-	loaders := []func() error{
+	loaders := []func(ctx context.Context) error{
 		d.loadIssues,
 		d.loadEpics,
 		d.loadInitiatives,
@@ -117,7 +117,10 @@ func (d *Data) load(ctx context.Context) error {
 	// load data concurrenctly
 	g, _ := errgroup.WithContext(ctx)
 	for _, f := range loaders {
-		g.Go(f)
+		f := f
+		g.Go(func() error {
+			return f(ctx)
+		})
 	}
 
 	// wait until all loaders have finished
@@ -130,8 +133,8 @@ func (d *Data) load(ctx context.Context) error {
 	return nil
 }
 
-func (d *Data) loadIssues() error {
-	issues, err := d.jira.ListIssues(d.jira.config.Project)
+func (d *Data) loadIssues(ctx context.Context) error {
+	issues, err := d.jira.ListIssues(ctx, d.jira.config.Project)
 	if err != nil {
 		return err
 	}
@@ -142,7 +145,7 @@ func (d *Data) loadIssues() error {
 	return nil
 }
 
-func (d *Data) loadEpics() error {
+func (d *Data) loadEpics(ctx context.Context) error {
 	epics, err := d.jira.ListEpics(d.jira.config.Project)
 	if err != nil {
 		return err
@@ -151,7 +154,7 @@ func (d *Data) loadEpics() error {
 	return nil
 }
 
-func (d *Data) loadInitiatives() error {
+func (d *Data) loadInitiatives(ctx context.Context) error {
 	initiatives, err := d.jira.ListInitiatives(d.jira.config.Project)
 	if err != nil {
 		return err
@@ -160,7 +163,7 @@ func (d *Data) loadInitiatives() error {
 	return nil
 }
 
-func (d *Data) loadBoardID() error {
+func (d *Data) loadBoardID(ctx context.Context) error {
 	boardID, err := d.jira.GetBoardID(d.jira.config.Project)
 	if err != nil {
 		return err
@@ -169,8 +172,8 @@ func (d *Data) loadBoardID() error {
 	return nil
 }
 
-func (d *Data) loadSprintIssues() error {
-	issues, err := d.jira.ListSprintIssues()
+func (d *Data) loadSprintIssues(ctx context.Context) error {
+	issues, err := d.jira.ListSprintIssues(ctx)
 	if err != nil {
 		return err
 	}
@@ -178,9 +181,9 @@ func (d *Data) loadSprintIssues() error {
 	return nil
 }
 
-func (d *Data) loadSprints() error {
+func (d *Data) loadSprints(ctx context.Context) error {
 	if d.BoardID == 0 {
-		if err := d.loadBoardID(); err != nil {
+		if err := d.loadBoardID(ctx); err != nil {
 			return nil
 		}
 	}
@@ -194,11 +197,11 @@ func (d *Data) loadSprints() error {
 
 // GetIssues returns a list of issues. If the data on disk is out of date it
 // will request the latest issues from Jira.
-func (d Data) GetIssues() (Issues, error) {
+func (d Data) GetIssues(ctx context.Context) (Issues, error) {
 	if !d.Stale() {
 		return d.Issues, nil
 	}
-	if err := d.loadIssues(); err != nil {
+	if err := d.loadIssues(ctx); err != nil {
 		return nil, err
 	}
 	return d.Issues, nil
@@ -206,11 +209,11 @@ func (d Data) GetIssues() (Issues, error) {
 
 // GetEpics returns a list of epic issues. If the data on disk is out of date
 // it will request the latest issues from Jira.
-func (d Data) GetEpics() (Issues, error) {
+func (d Data) GetEpics(ctx context.Context) (Issues, error) {
 	if !d.Stale() {
 		return d.Epics, nil
 	}
-	if err := d.loadEpics(); err != nil {
+	if err := d.loadEpics(ctx); err != nil {
 		return nil, err
 	}
 	return d.Epics, nil
@@ -218,11 +221,11 @@ func (d Data) GetEpics() (Issues, error) {
 
 // GetInitiatives returns a list of initiative issues. If the data on disk is
 // out of date it will request the latest issues from Jira.
-func (d Data) GetInitiatives() (Issues, error) {
+func (d Data) GetInitiatives(ctx context.Context) (Issues, error) {
 	if !d.Stale() {
 		return d.Initiatives, nil
 	}
-	if err := d.loadInitiatives(); err != nil {
+	if err := d.loadInitiatives(ctx); err != nil {
 		return nil, err
 	}
 	return d.Initiatives, nil
@@ -230,11 +233,11 @@ func (d Data) GetInitiatives() (Issues, error) {
 
 // GetSprintIssues return a list of issues in the current sprint. If the data
 // on disk is out of date it will request the latest issues from Jira.
-func (d Data) GetSprintIssues() (Issues, error) {
+func (d Data) GetSprintIssues(ctx context.Context) (Issues, error) {
 	if !d.Stale() {
 		return d.SprintIssues, nil
 	}
-	if err := d.loadSprintIssues(); err != nil {
+	if err := d.loadSprintIssues(ctx); err != nil {
 		return nil, err
 	}
 	return d.SprintIssues, nil
@@ -242,11 +245,11 @@ func (d Data) GetSprintIssues() (Issues, error) {
 
 // GetSprints returns active and future sprints. If the data on disk is out of
 // date it will request the latest issues from Jira.
-func (d Data) GetSprints() (Sprints, error) {
+func (d Data) GetSprints(ctx context.Context) (Sprints, error) {
 	if !d.Stale() {
 		return d.Sprints, nil
 	}
-	if err := d.loadSprints(); err != nil {
+	if err := d.loadSprints(ctx); err != nil {
 		return nil, err
 	}
 	return d.Sprints, nil

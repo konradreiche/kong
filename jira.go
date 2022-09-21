@@ -13,6 +13,8 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+const maxResults = 100
+
 // Jira encapsualtes interaction with the Jira API. It exposes a subset of the
 // possible interactions in order to simplify the workflow tailored to the
 // user.
@@ -48,7 +50,7 @@ func NewJira() (Jira, error) {
 }
 
 // ListIssues fetches all issues according to a specific JQL query.
-func (j Jira) ListIssues(project string) (Issues, error) {
+func (j Jira) ListIssues(ctx context.Context, project string) (Issues, error) {
 	conditions := []string{
 		"project = " + project,
 		"issueType IN (Task, Story, Bug)",
@@ -56,9 +58,7 @@ func (j Jira) ListIssues(project string) (Issues, error) {
 		"status != Closed",
 	}
 	jql := strings.Join(conditions, " AND ")
-	list, _, err := j.client.Issue.Search(jql, &jira.SearchOptions{
-		Expand: "transitions",
-	})
+	list, err := j.search(ctx, jql)
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +66,7 @@ func (j Jira) ListIssues(project string) (Issues, error) {
 }
 
 // ListSprintIssues fetches all issues assigned to the current sprint.
-func (j Jira) ListSprintIssues() (Issues, error) {
+func (j Jira) ListSprintIssues(ctx context.Context) (Issues, error) {
 	conditions := []string{
 		"project = " + j.config.Project,
 		"issueType IN (Story, Task, Bug)",
@@ -74,9 +74,7 @@ func (j Jira) ListSprintIssues() (Issues, error) {
 		"sprint in openSprints()",
 	}
 	jql := strings.Join(conditions, " AND ")
-	list, _, err := j.client.Issue.Search(jql, &jira.SearchOptions{
-		Expand: "transitions",
-	})
+	list, err := j.search(ctx, jql)
 	if err != nil {
 		return nil, err
 	}
@@ -113,13 +111,6 @@ func (j Jira) ListInitiatives(project string) (Issues, error) {
 		"project = " + project,
 		"issueType = Initiative",
 		"status != Closed",
-	}
-
-	// include query for labels if configured
-	if len(j.config.Labels) > 0 {
-		label := "labels IN (" + strings.Join(j.config.Labels, ",") + ")"
-		conditions = append(conditions, label)
-
 	}
 
 	jql := strings.Join(conditions, " AND ")
@@ -274,7 +265,7 @@ func (j Jira) TransitionIssues(ctx context.Context, issueTransitions []issueTran
 				t.transition.ID,
 			)
 			if err != nil {
-				return parseResponseError(resp)
+				return fmt.Errorf("TranitionIssues: %w", parseResponseError(resp))
 			}
 			fmt.Printf("%s - Status changed to %s\n", t.issueKey, t.transition.Name)
 			return nil
@@ -285,6 +276,9 @@ func (j Jira) TransitionIssues(ctx context.Context, issueTransitions []issueTran
 }
 
 func (j Jira) MoveIssuesToBacklog(ctx context.Context, keys []string) error {
+	if len(keys) == 0 {
+		return nil
+	}
 	req, err := j.client.NewRequest("POST", "/rest/agile/1.0/backlog/issue", map[string]interface{}{
 		"issues": keys,
 	})
@@ -293,12 +287,35 @@ func (j Jira) MoveIssuesToBacklog(ctx context.Context, keys []string) error {
 	}
 	resp, err := j.client.Do(req, nil)
 	if err != nil {
-		return parseResponseError(resp)
+		return fmt.Errorf("MoveIssuesToBacklog: %w", parseResponseError(resp))
 	}
 	for _, key := range keys {
 		fmt.Printf("%s - Moved to backlog\n", key)
 	}
 	return nil
+}
+
+func (j Jira) search(ctx context.Context, jql string) ([]jira.Issue, error) {
+	var (
+		startAt int
+		result  []jira.Issue
+	)
+	for {
+		list, resp, err := j.client.Issue.SearchWithContext(ctx, jql, &jira.SearchOptions{
+			StartAt:    startAt,
+			MaxResults: maxResults,
+			Expand:     "transitions",
+		})
+		if err != nil {
+			return nil, parseResponseError(resp)
+		}
+
+		result = append(result, list...)
+		if startAt >= resp.Total {
+			return result, nil
+		}
+		startAt += maxResults
+	}
 }
 
 func parseResponseError(resp *jira.Response) error {
