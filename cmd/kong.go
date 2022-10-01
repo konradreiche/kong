@@ -1,8 +1,10 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 
@@ -263,6 +265,30 @@ var standupCmd = &cobra.Command{
 	},
 }
 
+var branchCmd = &cobra.Command{
+	Use:   "branch",
+	Short: "Create a new branch named after the most recently created issue key",
+	Run: func(cmd *cobra.Command, args []string) {
+		ctx := cmd.Context()
+		data, err := kong.LoadData()
+		if err != nil {
+			exit(err)
+		}
+		if data.LastIssueCreated == "" {
+			exit(errors.New("no recently created issue"))
+		}
+		gitCmd := exec.CommandContext(ctx, "git", "checkout", "-b", data.LastIssueCreated)
+		stdoutStderr, err := gitCmd.CombinedOutput()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%s\n", string(stdoutStderr))
+			exit(err)
+		}
+		if len(stdoutStderr) > 0 {
+			exit(errors.New(string(stdoutStderr)))
+		}
+	},
+}
+
 var configureCmd = &cobra.Command{
 	Use:   "configure",
 	Short: "configure",
@@ -304,6 +330,7 @@ func Execute() {
 	cmd.AddCommand(daemonCmd)
 	cmd.AddCommand(initiativesCmd)
 	cmd.AddCommand(standupCmd)
+	cmd.AddCommand(branchCmd)
 
 	// sprint command and sprint sub-commands
 	cmd.AddCommand(sprintCmd)

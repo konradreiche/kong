@@ -2,8 +2,13 @@ build:
 	go install cmd/kong.go && rm -f cmd/cmd
 
 test:
-	golangci-lint run
 	go test ./...
+
+lint: install-tools
+	golangci-lint run
+
+install-tools:
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.49.0
 
 install:
 	./scripts/install.sh
@@ -19,6 +24,3 @@ status:
 
 logs:
 	journalctl --user -u kong.service -f
-
-install-linter:
-	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.45.2

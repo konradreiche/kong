@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/andygrunwald/go-jira"
@@ -189,6 +190,10 @@ func (j Jira) ListSprintsForBoard(boardID int) (Sprints, error) {
 
 // CreateIssues creates the given issues in parallel.
 func (j Jira) CreateIssues(ctx context.Context, issues []*jira.Issue) error {
+	var (
+		mu               sync.Mutex
+		lastIssueCreated string
+	)
 	g, ctx := errgroup.WithContext(ctx)
 	for _, issue := range issues {
 		// allocate variable to avoid scope capturing
@@ -201,10 +206,21 @@ func (j Jira) CreateIssues(ctx context.Context, issues []*jira.Issue) error {
 				return parseResponseError(resp)
 			}
 			fmt.Printf("Created %s - %s\n", newIssue.Key, issue.Fields.Summary)
+			mu.Lock()
+			lastIssueCreated = newIssue.Key
+			mu.Unlock()
 			return nil
 		})
 	}
-	return g.Wait()
+	if err := g.Wait(); err != nil {
+		return err
+	}
+	data, err := LoadData()
+	if err != nil {
+		return err
+	}
+	data.LastIssueCreated = lastIssueCreated
+	return data.writeFile()
 }
 
 // CreateSprint creates a new sprint.

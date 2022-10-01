@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/gob"
+	"fmt"
 	"os"
 	"time"
 
@@ -22,16 +23,17 @@ const (
 type Data struct {
 	jira Jira
 
-	Timestamp    int64
-	Issues       Issues
-	IssueByKey   map[string]Issue
-	Initiatives  Issues
-	Epics        Issues
-	SprintIssues Issues
-	BoardID      int
-	Sprints      Sprints
-	ActiveSprint Sprint
-	Transitions  []Transition
+	Timestamp        int64
+	Issues           Issues
+	IssueByKey       map[string]Issue
+	Initiatives      Issues
+	Epics            Issues
+	SprintIssues     Issues
+	BoardID          int
+	Sprints          Sprints
+	ActiveSprint     Sprint
+	Transitions      []Transition
+	LastIssueCreated string
 }
 
 // NewData returns a new instance of Data.
@@ -258,4 +260,30 @@ func (d Data) GetSprints(ctx context.Context) (Sprints, error) {
 func (d Data) isMissing() bool {
 	_, err := os.Stat(filepath())
 	return os.IsNotExist(err)
+}
+
+func (d Data) writeFile() error {
+	path := filepath()
+	flock := flock.New(path)
+	err := flock.Lock()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		err = flock.Unlock()
+		if err != nil {
+			fmt.Fprint(os.Stderr, err)
+		}
+	}()
+	// create or overwrite file at /tmp/kong
+	file, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	encoder := gob.NewEncoder(file)
+	err = encoder.Encode(d)
+	if err != nil {
+		return err
+	}
+	return file.Close()
 }
