@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/andygrunwald/go-jira"
-	"github.com/trivago/tgo/tcontainer"
 	"gopkg.in/yaml.v2"
 )
 
@@ -411,7 +410,7 @@ func (e Editor) parseIssue(columns []string, issueType string) (*jira.Issue, err
 	}
 
 	// map all custom fields
-	unknowns := tcontainer.NewMarshalMap()
+	unknowns := make(map[string]any, 1)
 	unknowns[e.config.CustomFields.StoryPoints] = storyPoints
 
 	// setting epic or sprint to 0 means unassigned
