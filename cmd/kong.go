@@ -55,7 +55,7 @@ var issuesCmd = &cobra.Command{
 			if err != nil {
 				exit(err)
 			}
-			issues.Print()
+			issues.Print(cmd.OutOrStderr())
 			return
 		}
 		data, err := kong.LoadData()
@@ -66,7 +66,7 @@ var issuesCmd = &cobra.Command{
 		if err != nil {
 			exit(err)
 		}
-		issues.Print()
+		issues.Print(cmd.OutOrStdout())
 	},
 }
 
@@ -114,11 +114,11 @@ var epicsCmd = &cobra.Command{
 			if err != nil {
 				exit(err)
 			}
-			epics, err := jira.ListEpics(projectFlag)
+			epics, err := jira.ListEpics(cmd.Context(), projectFlag)
 			if err != nil {
 				exit(err)
 			}
-			epics.Print()
+			epics.Print(cmd.OutOrStderr())
 			return
 		}
 
@@ -130,7 +130,7 @@ var epicsCmd = &cobra.Command{
 		if err != nil {
 			exit(err)
 		}
-		epics.Print()
+		epics.Print(cmd.OutOrStderr())
 	},
 }
 
@@ -156,11 +156,11 @@ var initiativesCmd = &cobra.Command{
 			if err != nil {
 				exit(err)
 			}
-			initiatives, err := jira.ListInitiatives(projectFlag)
+			initiatives, err := jira.ListInitiatives(cmd.Context(), projectFlag)
 			if err != nil {
 				exit(err)
 			}
-			initiatives.Print()
+			initiatives.Print(cmd.OutOrStderr())
 			return
 		}
 
@@ -172,7 +172,7 @@ var initiativesCmd = &cobra.Command{
 		if err != nil {
 			exit(err)
 		}
-		initiatives.Print()
+		initiatives.Print(cmd.OutOrStderr())
 	},
 }
 

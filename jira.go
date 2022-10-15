@@ -77,11 +77,15 @@ func (j Jira) ListSprintIssues(ctx context.Context) (Issues, error) {
 		"sprint in openSprints()",
 	}
 	jql := strings.Join(conditions, " AND ")
-	return j.search(ctx, jql)
+	issues, err := j.search(ctx, jql)
+	if err != nil {
+		return nil, fmt.Errorf("ListSprintIssues: %w", err)
+	}
+	return issues, nil
 }
 
 // ListEpics returns a list of epics associated wtih the current project.
-func (j Jira) ListEpics(project string) (Issues, error) {
+func (j Jira) ListEpics(ctx context.Context, project string) (Issues, error) {
 	conditions := []string{
 		"project = " + project,
 		"issueType = Epic",
@@ -93,21 +97,18 @@ func (j Jira) ListEpics(project string) (Issues, error) {
 	if len(j.config.Labels) > 0 {
 		label := "labels IN (" + strings.Join(j.config.Labels, ",") + ")"
 		conditions = append(conditions, label)
-
 	}
 
 	jql := strings.Join(conditions, " AND ")
-	issues, _, err := j.client.Issue.Search(jql, &jira.SearchOptions{
-		Expand: "transitions",
-	})
+	issues, err := j.search(ctx, jql)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("ListEpics: %w", err)
 	}
-	return NewIssues(issues, j.config.CustomFields)
+	return issues, nil
 }
 
 // ListInitiatives returns a list of initiatives associated with the current project.
-func (j Jira) ListInitiatives(project string) (Issues, error) {
+func (j Jira) ListInitiatives(ctx context.Context, project string) (Issues, error) {
 	conditions := []string{
 		"project = " + project,
 		"issueType = Initiative",
@@ -115,13 +116,11 @@ func (j Jira) ListInitiatives(project string) (Issues, error) {
 	}
 
 	jql := strings.Join(conditions, " AND ")
-	issues, _, err := j.client.Issue.Search(jql, &jira.SearchOptions{
-		Expand: "transitions",
-	})
+	issues, err := j.search(ctx, jql)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("ListInitiative: %w", err)
 	}
-	return NewIssues(issues, j.config.CustomFields)
+	return issues, nil
 }
 
 // ListSprints fetches all active and future sprints for the configured board
@@ -222,7 +221,7 @@ func (j Jira) CreateIssues(ctx context.Context, issues []*jira.Issue) error {
 		return err
 	}
 	data.LastIssueCreated = lastIssueCreated
-	return data.writeFile()
+	return data.WriteFile()
 }
 
 func (j Jira) UpdateIssue(ctx context.Context, key string, issue Issue) error {

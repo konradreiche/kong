@@ -42,9 +42,12 @@ func (d *Daemon) loop(ctx context.Context) error {
 		return err
 	}
 	// write file under file lock
-	return data.writeFile()
+	return data.WriteFile()
 }
 
 func filepath() string {
+	if path := os.Getenv("KONG_CACHE"); path != "" {
+		return path
+	}
 	return path.Join(os.TempDir(), "kong")
 }

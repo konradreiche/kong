@@ -59,6 +59,9 @@ func LoadData() (Data, error) {
 
 	if data.isMissing() {
 		printDaemonWarning()
+		if err := data.initJira(); err != nil {
+			return data, err
+		}
 		return data, nil
 	}
 
@@ -85,6 +88,9 @@ func LoadData() (Data, error) {
 	// report if data is stale but return current data anyway
 	if data.Stale() {
 		printDaemonWarning()
+		if err := data.initJira(); err != nil {
+			return data, err
+		}
 	}
 	return data, nil
 }
@@ -103,11 +109,9 @@ func LoadDataBlocking(ctx context.Context) (Data, error) {
 }
 
 func (d *Data) load(ctx context.Context) error {
-	jira, err := NewJira()
-	if err != nil {
+	if err := d.initJira(); err != nil {
 		return err
 	}
-	d.jira = jira
 
 	loaders := []func(ctx context.Context) error{
 		d.loadIssues,
@@ -137,6 +141,15 @@ func (d *Data) load(ctx context.Context) error {
 	return nil
 }
 
+func (d *Data) initJira() error {
+	jira, err := NewJira()
+	if err != nil {
+		return err
+	}
+	d.jira = jira
+	return nil
+}
+
 func (d *Data) loadIssues(ctx context.Context) error {
 	issues, err := d.jira.ListIssues(ctx, d.jira.config.Project)
 	if err != nil {
@@ -150,7 +163,7 @@ func (d *Data) loadIssues(ctx context.Context) error {
 }
 
 func (d *Data) loadEpics(ctx context.Context) error {
-	epics, err := d.jira.ListEpics(d.jira.config.Project)
+	epics, err := d.jira.ListEpics(ctx, d.jira.config.Project)
 	if err != nil {
 		return err
 	}
@@ -159,7 +172,7 @@ func (d *Data) loadEpics(ctx context.Context) error {
 }
 
 func (d *Data) loadInitiatives(ctx context.Context) error {
-	initiatives, err := d.jira.ListInitiatives(d.jira.config.Project)
+	initiatives, err := d.jira.ListInitiatives(ctx, d.jira.config.Project)
 	if err != nil {
 		return err
 	}
@@ -267,7 +280,7 @@ func (d Data) isMissing() bool {
 	return os.IsNotExist(err)
 }
 
-func (d Data) writeFile() error {
+func (d Data) WriteFile() error {
 	path := filepath()
 	flock := flock.New(path)
 	err := flock.Lock()

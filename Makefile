@@ -13,7 +13,7 @@ install-tools:
 install:
 	./scripts/install.sh
 
-reload:
+reload: build
 	./scripts/reload.sh
 
 stop:

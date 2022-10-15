@@ -2,13 +2,14 @@ package kong
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"text/tabwriter"
 )
 
 // Print formats a list of issues and writes them to stdout.
-func (i Issues) Print() {
-	w := tabwriter.NewWriter(os.Stdout, 1, 1, 1, ' ', 0)
+func (i Issues) Print(output io.Writer) {
+	w := tabwriter.NewWriter(output, 1, 1, 1, ' ', 0)
 	for _, issue := range i.Sort() {
 		fmt.Fprintf(w, "%s\t-\t%s\t-\t%s\n", issue.Key, issue.Status.Name, issue.Summary)
 	}

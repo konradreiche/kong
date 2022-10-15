@@ -26,5 +26,5 @@ func (e ErrCreateSprint) Error() string {
 }
 
 func printDaemonWarning() {
-	fmt.Fprintln(os.Stderr, "Warning: daemon not running. Performing slow request.")
+	fmt.Fprintln(os.Stderr, "Warning: daemon not running, check logs. Performing slow request.")
 }
