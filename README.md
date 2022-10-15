@@ -1,5 +1,5 @@
 # 🦍 Kong
-![golangci-lint](https://github.com/konradreiche/kong/actions/workflows/lint-and-test.yaml/badge.svg)
+![golangci-lint](https://github.com/konradreiche/kong/actions/workflows/lint-and-test.yaml/badge.svg) [![codecov](https://codecov.io/gh/konradreiche/kong/branch/main/graph/badge.svg?token=VIY0XN5FF0)](https://codecov.io/gh/konradreiche/kong)
 
 Kong is a Jira CLI for low-latency interactions with Jira's API which is known to take multiple seconds to respond. Through background caching Kong responds in 10ms or less from the comfort of your terminal speeding up your daily agile chores.
 
