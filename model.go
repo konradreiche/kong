@@ -1,12 +1,23 @@
 package kong
 
 import (
+	"errors"
+	"fmt"
 	"sort"
 	"strings"
 	"time"
 	"unicode"
 
 	"github.com/andygrunwald/go-jira"
+)
+
+var (
+	errJiraKeyEmpty          = errors.New("key cannot be empty")
+	errJiraFieldEmpty        = errors.New("fields cannot be nil")
+	errJiraSummaryEmpty      = errors.New("summary cannot be empty")
+	errJiraPriorityNil       = errors.New("priority cannot be nil")
+	errJiraPriorityNameEmpty = errors.New("priority name cannot be empty")
+	errJiraTransitionsEmpty  = errors.New("transitions cannot be empty")
 )
 
 // Issues is a list of issues which conveniently exposes a Print method to
@@ -57,28 +68,23 @@ type Sprint struct {
 
 // NewIssues returns a new instance of Issues by converting jira.Issue to
 // Issue.
-func NewIssues(issues []jira.Issue, customFields CustomFields) Issues {
-	result := make(Issues, len(issues))
+func NewIssues(jiraIssues []jira.Issue, customFields CustomFields) (Issues, error) {
+	result := make(Issues, len(jiraIssues))
 	transitions := make([]Transition, 0)
 	transitionsByAcronym := make(map[string]Transition)
 	orderByTransitionStatus := make(map[string]int, len(transitions))
 
-	for i, issue := range issues {
-		result[i] = Issue{
-			Key:      issue.Key,
-			Summary:  issue.Fields.Summary,
-			Priority: issue.Fields.Priority.Name,
-			Status: Status{
-				Name:    issue.Fields.Status.Name,
-				Acronym: statusAcronym(issue.Fields.Status.Name),
-				IsDone:  issue.Fields.Status.StatusCategory.Key == "done",
-			},
+	for i, jiraIssue := range jiraIssues {
+		issue, err := NewIssue(jiraIssue)
+		if err != nil {
+			return nil, fmt.Errorf("NewIssues: %w", err)
 		}
+		result[i] = issue
 
 		// only initialize list of transitions once
 		if len(transitions) == 0 {
-			transitions = make([]Transition, len(issue.Transitions))
-			for j, transition := range issue.Transitions {
+			transitions = make([]Transition, len(jiraIssue.Transitions))
+			for j, transition := range jiraIssue.Transitions {
 				acronym := statusAcronym(transition.To.Name)
 				t := Transition{
 					ID:          transition.ID,
@@ -98,8 +104,8 @@ func NewIssues(issues []jira.Issue, customFields CustomFields) Issues {
 		result[i].OrderByTransitionStatus = orderByTransitionStatus
 
 		// set sprint
-		if issue.Fields.Unknowns[customFields.Sprints] != nil {
-			sprints := issue.Fields.Unknowns[customFields.Sprints].([]interface{})
+		if jiraIssue.Fields.Unknowns[customFields.Sprints] != nil {
+			sprints := jiraIssue.Fields.Unknowns[customFields.Sprints].([]interface{})
 			for _, item := range sprints {
 				sprint := item.(map[string]interface{})
 				if sprint["state"] == "active" {
@@ -109,7 +115,59 @@ func NewIssues(issues []jira.Issue, customFields CustomFields) Issues {
 			}
 		}
 	}
-	return result
+	return result, nil
+}
+
+// NewIssue returns a new instance of Issue by converting jira.Issue to Issue.
+func NewIssue(issue jira.Issue) (Issue, error) {
+	if err := validateJiraIssue(issue); err != nil {
+		return Issue{}, err
+	}
+	result := Issue{
+		Key:      issue.Key,
+		Summary:  issue.Fields.Summary,
+		Priority: issue.Fields.Priority.Name,
+		Status:   NewStatus(issue),
+	}
+	return result, nil
+}
+
+func validateJiraIssue(issue jira.Issue) error {
+	if issue.Key == "" {
+		return errJiraKeyEmpty
+	}
+	if issue.Fields == nil {
+		return errJiraFieldEmpty
+	}
+	if issue.Fields.Summary == "" {
+		return errJiraSummaryEmpty
+	}
+	if issue.Fields.Priority == nil {
+		return errJiraPriorityNil
+	}
+	if issue.Fields.Priority.Name == "" {
+		return errJiraPriorityNameEmpty
+	}
+	if len(issue.Transitions) == 0 {
+		return errJiraTransitionsEmpty
+	}
+	return nil
+}
+
+// NewStauts returns a new instnace of Status by converting the status field of
+// jira.Issue.
+func NewStatus(issue jira.Issue) Status {
+	if issue.Fields == nil {
+		return Status{}
+	}
+	if issue.Fields.Status == nil {
+		return Status{}
+	}
+	return Status{
+		Name:    issue.Fields.Status.Name,
+		Acronym: statusAcronym(issue.Fields.Status.Name),
+		IsDone:  issue.Fields.Status.StatusCategory.Key == "done",
+	}
 }
 
 // NewSprints returns a new instance of Sprints by converting jira.Sprint to

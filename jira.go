@@ -14,15 +14,16 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-const maxResults = 100
+const defaultMaxResults = 100
 
 // Jira encapsualtes interaction with the Jira API. It exposes a subset of the
 // possible interactions in order to simplify the workflow tailored to the
 // user.
 type Jira struct {
-	client *jira.Client
-	user   *jira.User
-	config Config
+	client     *jira.Client
+	user       *jira.User
+	config     Config
+	maxResults int
 }
 
 // NewJira returns a Jira client based on the given username and password.
@@ -44,9 +45,10 @@ func NewJira() (Jira, error) {
 		return Jira{}, err
 	}
 	return Jira{
-		client: client,
-		user:   user,
-		config: config,
+		client:     client,
+		user:       user,
+		config:     config,
+		maxResults: defaultMaxResults,
 	}, nil
 }
 
@@ -59,11 +61,11 @@ func (j Jira) ListIssues(ctx context.Context, project string) (Issues, error) {
 		"status != Closed",
 	}
 	jql := strings.Join(conditions, " AND ")
-	list, err := j.search(ctx, jql)
+	issues, err := j.search(ctx, jql)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("ListIssues: %w", err)
 	}
-	return NewIssues(list, j.config.CustomFields), nil
+	return issues, nil
 }
 
 // ListSprintIssues fetches all issues assigned to the current sprint.
@@ -75,11 +77,7 @@ func (j Jira) ListSprintIssues(ctx context.Context) (Issues, error) {
 		"sprint in openSprints()",
 	}
 	jql := strings.Join(conditions, " AND ")
-	list, err := j.search(ctx, jql)
-	if err != nil {
-		return nil, err
-	}
-	return NewIssues(list, j.config.CustomFields), nil
+	return j.search(ctx, jql)
 }
 
 // ListEpics returns a list of epics associated wtih the current project.
@@ -99,11 +97,13 @@ func (j Jira) ListEpics(project string) (Issues, error) {
 	}
 
 	jql := strings.Join(conditions, " AND ")
-	issues, _, err := j.client.Issue.Search(jql, &jira.SearchOptions{})
+	issues, _, err := j.client.Issue.Search(jql, &jira.SearchOptions{
+		Expand: "transitions",
+	})
 	if err != nil {
 		return nil, err
 	}
-	return NewIssues(issues, j.config.CustomFields), nil
+	return NewIssues(issues, j.config.CustomFields)
 }
 
 // ListInitiatives returns a list of initiatives associated with the current project.
@@ -115,11 +115,13 @@ func (j Jira) ListInitiatives(project string) (Issues, error) {
 	}
 
 	jql := strings.Join(conditions, " AND ")
-	issues, _, err := j.client.Issue.Search(jql, &jira.SearchOptions{})
+	issues, _, err := j.client.Issue.Search(jql, &jira.SearchOptions{
+		Expand: "transitions",
+	})
 	if err != nil {
 		return nil, err
 	}
-	return NewIssues(issues, j.config.CustomFields), nil
+	return NewIssues(issues, j.config.CustomFields)
 }
 
 // ListSprints fetches all active and future sprints for the configured board
@@ -340,27 +342,28 @@ func (j Jira) MoveIssuesToBacklog(ctx context.Context, keys []string) error {
 	return nil
 }
 
-func (j Jira) search(ctx context.Context, jql string) ([]jira.Issue, error) {
+func (j Jira) search(ctx context.Context, jql string) (Issues, error) {
 	var (
-		startAt int
 		result  []jira.Issue
+		startAt int
 	)
 	for {
 		list, resp, err := j.client.Issue.SearchWithContext(ctx, jql, &jira.SearchOptions{
 			StartAt:    startAt,
-			MaxResults: maxResults,
+			MaxResults: j.maxResults,
 			Expand:     "transitions",
 		})
 		if err != nil {
 			return nil, parseResponseError(resp)
 		}
-
 		result = append(result, list...)
-		if startAt >= resp.Total {
-			return result, nil
+
+		if len(result) >= resp.Total {
+			break
 		}
-		startAt += maxResults
+		startAt += len(list)
 	}
+	return NewIssues(result, j.config.CustomFields)
 }
 
 func parseResponseError(resp *jira.Response) error {
