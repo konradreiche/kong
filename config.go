@@ -121,7 +121,7 @@ func (c Configurer) ReadString(label string, target *string) error {
 	}
 	s = strings.TrimSuffix(s, "\n")
 
-	// onyl write to target if user did not skip
+	// only write to target if user did not skip
 	if s != "" {
 		*target = s
 	}

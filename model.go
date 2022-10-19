@@ -154,7 +154,7 @@ func validateJiraIssue(issue jira.Issue) error {
 	return nil
 }
 
-// NewStauts returns a new instnace of Status by converting the status field of
+// NewStatus returns a new instance of Status by converting the status field of
 // jira.Issue.
 func NewStatus(issue jira.Issue) Status {
 	if issue.Fields == nil {
