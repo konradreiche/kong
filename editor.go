@@ -25,7 +25,7 @@ var (
 	errUnknownTransition = errors.New("transition does not exist")
 )
 
-// Editor provides any functionality that processes user input by providing a
+// Editor provides any functionality that processes user input by providing an
 // editor which creates files and parses back the content the user provided.
 type Editor struct {
 	jira   Jira
@@ -33,7 +33,7 @@ type Editor struct {
 	config Config
 }
 
-// NewEditor returns a new instace of Editor.
+// NewEditor returns a new instance of Editor.
 func NewEditor(ctx context.Context) (Editor, error) {
 	var (
 		editor Editor

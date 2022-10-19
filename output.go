@@ -16,7 +16,7 @@ func (i Issues) Print(output io.Writer) {
 	w.Flush()
 }
 
-// Print formats a list of issues with sprint status and writes them to stdout.
+// PrintSprint formats a list of issues with sprint status and writes them to stdout.
 func (i Issues) PrintSprint(includeDone bool) {
 	w := tabwriter.NewWriter(os.Stdout, 1, 1, 1, ' ', 0)
 	for _, issue := range i.Sort() {
