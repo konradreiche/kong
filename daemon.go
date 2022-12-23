@@ -34,6 +34,7 @@ func (d *Daemon) Run(ctx context.Context) {
 }
 
 func (d *Daemon) loop(ctx context.Context) error {
+	// TODO: lock file during whole loop
 	data, err := LoadData()
 	if err != nil {
 		return err

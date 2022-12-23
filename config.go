@@ -2,6 +2,7 @@ package kong
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 	"path"
@@ -10,6 +11,8 @@ import (
 
 	"gopkg.in/yaml.v2"
 )
+
+var errConfigComponentEmpty = errors.New("component cannot be empty")
 
 // Config provides the configuration for the Jira client. The configuration is
 // used to authenticate the Jira client and customize Jira queries.
@@ -42,6 +45,16 @@ type CustomFields struct {
 	// custom fields for epic creation
 	EpicName   string `yaml:"epicName"`
 	ParentLink string `yaml:"parentLink"`
+}
+
+// Validate ensures the configuration has a valid values.
+func (c Config) Validate() error {
+	for _, component := range c.Components {
+		if component == "" {
+			return fmt.Errorf("Config.Validate: %w", errConfigComponentEmpty)
+		}
+	}
+	return nil
 }
 
 // Write ensures the configuration directory exists and writes the content of
@@ -77,8 +90,13 @@ func LoadConfig() (Config, error) {
 	if err != nil {
 		return config, err
 	}
-	err = yaml.Unmarshal(b, &config)
-	return config, err
+	if err := yaml.Unmarshal(b, &config); err != nil {
+		return config, err
+	}
+	if err := config.Validate(); err != nil {
+		return config, fmt.Errorf("LoadConfig: %w", config.Validate())
+	}
+	return config, nil
 }
 
 func (c Config) dir() string {

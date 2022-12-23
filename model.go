@@ -2,7 +2,7 @@ package kong
 
 import (
 	"errors"
-	"fmt"
+	"log"
 	"sort"
 	"strings"
 	"time"
@@ -69,23 +69,25 @@ type Sprint struct {
 // NewIssues returns a new instance of Issues by converting jira.Issue to
 // Issue.
 func NewIssues(jiraIssues []jira.Issue, customFields CustomFields) (Issues, error) {
-	result := make(Issues, len(jiraIssues))
+	result := make(Issues, 0, len(jiraIssues))
 	transitions := make([]Transition, 0)
 	transitionsByAcronym := make(map[string]Transition)
 	orderByTransitionStatus := make(map[string]int, len(transitions))
 
-	for i, jiraIssue := range jiraIssues {
+	var acronyms map[string]string
+	for _, jiraIssue := range jiraIssues {
 		issue, err := NewIssue(jiraIssue)
 		if err != nil {
-			return nil, fmt.Errorf("NewIssues: %w", err)
+			log.Print("NewIssues: " + err.Error())
+			continue
 		}
-		result[i] = issue
 
 		// only initialize list of transitions once
 		if len(transitions) == 0 {
+			acronyms = statusAcronyms(jiraIssue.Transitions)
 			transitions = make([]Transition, len(jiraIssue.Transitions))
 			for j, transition := range jiraIssue.Transitions {
-				acronym := statusAcronym(transition.To.Name)
+				acronym := acronyms[transition.Name]
 				t := Transition{
 					ID:          transition.ID,
 					Name:        transition.To.Name,
@@ -99,9 +101,10 @@ func NewIssues(jiraIssues []jira.Issue, customFields CustomFields) (Issues, erro
 		}
 
 		// then reference the initialized lists
-		result[i].Transitions = transitions
-		result[i].TransitionsByAcronym = transitionsByAcronym
-		result[i].OrderByTransitionStatus = orderByTransitionStatus
+		issue.Transitions = transitions
+		issue.TransitionsByAcronym = transitionsByAcronym
+		issue.OrderByTransitionStatus = orderByTransitionStatus
+		issue.Status.Acronym = acronyms[issue.Status.Name]
 
 		// set sprint
 		if jiraIssue.Fields.Unknowns[customFields.Sprints] != nil {
@@ -109,11 +112,12 @@ func NewIssues(jiraIssues []jira.Issue, customFields CustomFields) (Issues, erro
 			for _, item := range sprints {
 				sprint := item.(map[string]interface{})
 				if sprint["state"] == "active" {
-					result[i].SprintID = int(sprint["id"].(float64))
+					issue.SprintID = int(sprint["id"].(float64))
 					break
 				}
 			}
 		}
+		result = append(result, issue)
 	}
 	return result, nil
 }
@@ -154,7 +158,7 @@ func validateJiraIssue(issue jira.Issue) error {
 	return nil
 }
 
-// NewStauts returns a new instnace of Status by converting the status field of
+// NewStauts returns a new instance of Status by converting the status field of
 // jira.Issue.
 func NewStatus(issue jira.Issue) Status {
 	if issue.Fields == nil {
@@ -164,9 +168,8 @@ func NewStatus(issue jira.Issue) Status {
 		return Status{}
 	}
 	return Status{
-		Name:    issue.Fields.Status.Name,
-		Acronym: statusAcronym(issue.Fields.Status.Name),
-		IsDone:  issue.Fields.Status.StatusCategory.Key == "done",
+		Name:   issue.Fields.Status.Name,
+		IsDone: issue.Fields.Status.StatusCategory.Key == "done",
 	}
 }
 
@@ -223,11 +226,25 @@ func (i Issues) Sort() Issues {
 }
 
 // order by implicit transition status order returned from the Jira API
-
-func statusAcronym(name string) string {
-	var s strings.Builder
-	for _, word := range strings.Split(name, " ") {
-		s.WriteRune(unicode.ToLower(rune(word[0])))
+func statusAcronyms(transitions []jira.Transition) map[string]string {
+	acronymByTransition := make(map[string]string, len(transitions))
+	acronyms := make(map[string]struct{}, len(transitions))
+	for _, transition := range transitions {
+		var (
+			s strings.Builder
+			n int
+		)
+		for {
+			for _, word := range strings.Split(transition.To.Name, " ") {
+				s.WriteRune(unicode.ToLower(rune(word[n])))
+			}
+			if _, ok := acronyms[s.String()]; !ok {
+				acronyms[s.String()] = struct{}{}
+				acronymByTransition[transition.To.Name] = s.String()
+				break
+			}
+			n++
+		}
 	}
-	return s.String()
+	return acronymByTransition
 }

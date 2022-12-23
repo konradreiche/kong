@@ -30,7 +30,7 @@ type Jira struct {
 func NewJira() (Jira, error) {
 	config, err := LoadConfig()
 	if err != nil {
-		return Jira{}, err
+		return Jira{}, fmt.Errorf("NewJira: %w", err)
 	}
 	tp := jira.BasicAuthTransport{
 		Username: config.Username,
