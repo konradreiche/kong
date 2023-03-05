@@ -16,7 +16,7 @@ import (
 
 const defaultMaxResults = 100
 
-// Jira encapsualtes interaction with the Jira API. It exposes a subset of the
+// Jira encapsulates interaction with the Jira API. It exposes a subset of the
 // possible interactions in order to simplify the workflow tailored to the
 // user.
 type Jira struct {
@@ -84,7 +84,7 @@ func (j Jira) ListSprintIssues(ctx context.Context) (Issues, error) {
 	return issues, nil
 }
 
-// ListEpics returns a list of epics associated wtih the current project.
+// ListEpics returns a list of epics associated with the current project.
 func (j Jira) ListEpics(ctx context.Context, project string) (Issues, error) {
 	conditions := []string{
 		"project = " + project,

@@ -122,7 +122,7 @@ func (d *Data) load(ctx context.Context) error {
 		d.loadSprints,
 	}
 
-	// load data concurrenctly
+	// load data concurrently
 	g, _ := errgroup.WithContext(ctx)
 	for _, f := range loaders {
 		f := f

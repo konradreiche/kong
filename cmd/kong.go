@@ -347,7 +347,7 @@ var configureCmd = &cobra.Command{
 // Execute assembles the all commands and sub-commands and executes the
 // program.
 func Execute() {
-	// root coomands
+	// root commands
 	cmd.AddCommand(configureCmd)
 	cmd.AddCommand(daemonCmd)
 	cmd.AddCommand(initiativesCmd)
