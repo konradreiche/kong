@@ -4,6 +4,8 @@ After=network.target
 
 [Service]
 ExecStart=%h/go/bin/kong daemon
+Restart=on-failure
+RestartSec=5s
 
 [Install]
 WantedBy = default.target
