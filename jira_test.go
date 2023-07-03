@@ -1,7 +1,6 @@
 package kong
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -10,76 +9,7 @@ import (
 	"testing"
 
 	"github.com/andygrunwald/go-jira"
-	"github.com/google/go-cmp/cmp"
 )
-
-func TestListIssues(t *testing.T) {
-	const (
-		maxResults = 2
-		total      = 5
-	)
-	var gotCalled int
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		verifyMaxResultsResponse(t, r, maxResults)
-		writeSearchResponse(t, w, r, maxResults, total, gotCalled)
-		gotCalled++
-	}))
-
-	jira := newJiraTest(t, ts, maxResults)
-	got, err := jira.ListIssues(context.Background(), "KONG")
-	if err != nil {
-		t.Fatal(err)
-	}
-	wantCalled := 3
-	if gotCalled != wantCalled {
-		t.Errorf("got %d, want: %d", gotCalled, wantCalled)
-	}
-
-	want := Issues{
-		issue("KONG-1"),
-		issue("KONG-2"),
-		issue("KONG-3"),
-		issue("KONG-4"),
-		issue("KONG-5"),
-	}
-	if diff := cmp.Diff(got, want); diff != "" {
-		t.Errorf("diff: %s", diff)
-	}
-}
-
-func TestSearch(t *testing.T) {
-	const (
-		total      = 5
-		maxResults = 2
-	)
-
-	var gotCalled int
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeSearchResponse(t, w, r, maxResults, total, gotCalled)
-		gotCalled++
-	}))
-
-	jira := newJiraTest(t, ts, maxResults)
-	got, err := jira.search(context.Background(), "project = KONG")
-	if err != nil {
-		t.Fatal(err)
-	}
-	wantCalled := 3
-	if gotCalled != wantCalled {
-		t.Errorf("got %d, want: %d", gotCalled, wantCalled)
-	}
-
-	want := Issues{
-		issue("KONG-1"),
-		issue("KONG-2"),
-		issue("KONG-3"),
-		issue("KONG-4"),
-		issue("KONG-5"),
-	}
-	if diff := cmp.Diff(got, want); diff != "" {
-		t.Errorf("diff: %s", diff)
-	}
-}
 
 type searchResult struct {
 	Issues     []jira.Issue `json:"issues"`

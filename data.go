@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/gob"
 	"fmt"
+	"io"
 	"os"
 	"time"
 
@@ -77,12 +78,20 @@ func LoadData() (Data, error) {
 
 	b, err := os.ReadFile(path)
 	if err != nil {
-		return data, nil
+		return data, fmt.Errorf("ReadFile: %w", err)
 	}
 	decoder := gob.NewDecoder(bytes.NewBuffer(b))
 	if err = decoder.Decode(&data); err != nil {
-		printDaemonWarning()
-		return data, err
+		if err == io.ErrUnexpectedEOF {
+			// file corrupt? Deleting
+			fmt.Fprintln(os.Stderr, "file potentially corrupt, deleting", path)
+			if err := os.Remove(path); err != nil {
+				return Data{}, err
+			}
+			printDaemonWarning()
+			return Data{}, nil
+		}
+		return data, fmt.Errorf("gob.Decode(%s): %w", path, err)
 	}
 
 	// report if data is stale but return current data anyway
@@ -109,6 +118,9 @@ func LoadDataBlocking(ctx context.Context) (Data, error) {
 }
 
 func (d *Data) load(ctx context.Context) error {
+	defer func(startedAt time.Time) {
+		fmt.Println("load time", time.Since(startedAt))
+	}(time.Now())
 	if err := d.initJira(); err != nil {
 		return err
 	}

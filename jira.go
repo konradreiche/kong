@@ -38,11 +38,11 @@ func NewJira() (Jira, error) {
 	}
 	client, err := jira.NewClient(tp.Client(), config.Endpoint)
 	if err != nil {
-		return Jira{}, err
+		return Jira{}, fmt.Errorf("NewClient: %w", err)
 	}
 	user, _, err := client.User.GetSelf()
 	if err != nil {
-		return Jira{}, err
+		return Jira{}, fmt.Errorf("GetSelf: %w", err)
 	}
 	return Jira{
 		client:     client,
@@ -58,7 +58,7 @@ func (j Jira) ListIssues(ctx context.Context, project string) (Issues, error) {
 		"project = " + project,
 		"issueType IN (Task, Story, Bug)",
 		"assignee = \"" + j.user.DisplayName + "\"",
-		"status != Closed",
+		"status NOT IN (Closed, Done)",
 	}
 	jql := strings.Join(conditions, " AND ")
 	issues, err := j.search(ctx, jql)
@@ -155,11 +155,11 @@ func (j Jira) GetBoardID(project string) (int, error) {
 
 	resp, err := j.client.Do(req, nil)
 	if err != nil {
-		return 0, parseResponseError(resp)
+		return 0, fmt.Errorf("GetBoardID: %w", parseResponseError(resp))
 	}
 	b, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("GetBoardID.ReadAll: %w", err)
 	}
 
 	var result struct {
@@ -184,7 +184,7 @@ func (j Jira) ListSprintsForBoard(boardID int) (Sprints, error) {
 		},
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("ListSprintsForBoard: %w", err)
 	}
 	return NewSprints(sprints.Values), nil
 }
@@ -353,7 +353,7 @@ func (j Jira) search(ctx context.Context, jql string) (Issues, error) {
 			Expand:     "transitions",
 		})
 		if err != nil {
-			return nil, parseResponseError(resp)
+			return nil, fmt.Errorf("search: %w", parseResponseError(resp))
 		}
 		result = append(result, list...)
 
