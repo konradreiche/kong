@@ -47,12 +47,3 @@ func TestNewSprint(t *testing.T) {
 		}
 	})
 }
-
-func transition(id, name, description, acronym string) Transition {
-	return Transition{
-		ID:          id,
-		Name:        name,
-		Description: description,
-		Acronym:     acronym,
-	}
-}

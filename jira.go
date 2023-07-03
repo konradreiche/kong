@@ -260,7 +260,6 @@ func (j Jira) CreateSprint(name string, month, day, boardID int) error {
 	tz := now.Location()
 	layout := "2006-01-02T15:04:05.000-07:00"
 	startDate := time.Date(now.Year(), time.Month(month), day, 0, 0, 0, 0, tz)
-	startDate.Format(layout)
 
 	// define end date based on configured sprint duration
 	endDate := startDate.Add(time.Duration(j.config.SprintDuration+1) * 24 * time.Hour)

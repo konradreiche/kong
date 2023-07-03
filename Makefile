@@ -8,7 +8,7 @@ lint: install-tools
 	golangci-lint run
 
 install-tools:
-	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.49.0
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.53.3
 
 install:
 	./scripts/install.sh
